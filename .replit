@@ -24,3 +24,10 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+VITE_SUPABASE_URL = "https://icjwbjeoremieofbiinb.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljandiamVvcmVtaWVvZmJpaW5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTQzMjQsImV4cCI6MjA4ODU5MDMyNH0.TiL_UeNEWXAi3WlC-DCLhFkdpUiJidZh984T0pqoe9w"
+VITE_SUPABASE_PROJECT_ID = "icjwbjeoremieofbiinb"
