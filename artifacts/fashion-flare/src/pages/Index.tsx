@@ -1,3 +1,4 @@
+import SEOHead from "@/components/SEOHead";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import SocialProofBar from "@/components/SocialProofBar";
@@ -15,7 +16,12 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <>
+      <SEOHead
+        title="منصة محتوى الفاشون العربي بالذكاء الاصطناعي"
+        description="Moda AI — ولّد كابشنات، صور منتجات، إعلانات، وريلز احترافية لبراندك الفاشون في ثواني. الذكاء الاصطناعي المتخصص في البراندات العربية والمصرية."
+      />
+      <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Navbar />
       <HeroSection />
       <SocialProofBar />
@@ -31,6 +37,7 @@ const Index = () => {
       <Footer />
       <WhatsAppButton />
     </div>
+    </>
   );
 };
 

@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { usePageTitle } from "@/components/AccessibilityHelpers";
+import SEOHead from "@/components/SEOHead";
 
 const TermsPage = () => {
   usePageTitle("شروط الاستخدام");
 
   return (
+    <>
+    <SEOHead title="شروط الاستخدام" description="اقرأ شروط استخدام Moda AI — المنصة المتخصصة في توليد محتوى الفاشون العربي بالذكاء الاصطناعي." />
     <div className="min-h-screen bg-background gradient-bg">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <Link to="/" className="inline-flex items-center gap-2 mb-10">
@@ -55,6 +58,7 @@ const TermsPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

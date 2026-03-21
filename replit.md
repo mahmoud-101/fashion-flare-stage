@@ -54,6 +54,13 @@ React + Vite app for Arabic fashion brands. Imported from GitHub: `https://githu
 - `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/public key
 - `VITE_SUPABASE_PROJECT_ID` — Supabase project ID
 
+### Implemented Features
+- **Google Login**: Supabase OAuth via `supabase.auth.signInWithOAuth({ provider: "google" })` in AuthPage.tsx. Requires Google provider enabled in Supabase Dashboard → Authentication → Providers.
+- **SEO**: `react-helmet-async` installed. `HelmetProvider` wraps the app in App.tsx. `SEOHead` component at `src/components/SEOHead.tsx`. Per-page SEO on: `Index`, `AuthPage`, `TermsPage`, `PrivacyPage`.
+- **CSS fixes**: Smooth scroll, `overflow-x: hidden` on html/body, proper `line-height` for headings/paragraphs, `focus-visible` styles for accessibility, `prefers-reduced-motion` support, GPU-hinted animations with `will-change`, better tap targets on mobile.
+- **React Router v7 flags**: Added `v7_startTransition` and `v7_relativeSplatPath` future flags to suppress warnings.
+- **Background removal**: Already lazy-loaded via dynamic import — no changes needed.
+
 ### Key Note on Tailwind
 This artifact uses Tailwind CSS v3 (pinned to `^3.4.17`), unlike the workspace catalog which uses v4.
 The `vite.config.ts` intentionally does NOT use `@tailwindcss/vite` — PostCSS handles Tailwind via `postcss.config.js`.
