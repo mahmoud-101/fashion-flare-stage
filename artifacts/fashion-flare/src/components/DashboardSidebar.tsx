@@ -37,26 +37,46 @@ import {
   PenTool,
 } from "lucide-react";
 
-const menuItems = [
-  { title: "الرئيسية", url: "/dashboard", icon: LayoutDashboard },
-  { title: "مولّد الإعلانات", url: "/dashboard/ad-generator", icon: Wand2 },
-  { title: "تجسس المنافسين", url: "/dashboard/competitor-spy", icon: Eye },
-  { title: "A/B اختبار", url: "/dashboard/ab-testing", icon: FlaskConical },
-  { title: "كاتب المحتوى", url: "/dashboard/writer", icon: Pen },
-  { title: "مكتبة المحتوى", url: "/dashboard/library", icon: Library },
-  { title: "استوديو المصمم", url: "/dashboard/creator", icon: Sparkles },
-  { title: "استوديو التصوير", url: "/dashboard/photoshoot", icon: Camera },
-  { title: "استوديو التعديل", url: "/dashboard/edit-studio", icon: Edit3 },
-  { title: "استوديو الصور", url: "/dashboard/studio", icon: Image },
-  { title: "تبديل الوجوه", url: "/dashboard/face-swap", icon: ArrowLeftRight },
-  { title: "تجربة افتراضية", url: "/dashboard/virtual-tryon", icon: Shirt },
-  { title: "تكبير الصور HD", url: "/dashboard/upscaler", icon: ZoomIn },
-  { title: "سكتش لصورة", url: "/dashboard/sketch-to-image", icon: PenTool },
-  { title: "صانع الريلز", url: "/dashboard/reels", icon: Video },
-  { title: "المخطط والجدولة", url: "/dashboard/scheduler", icon: Calendar },
-  { title: "التحليلات", url: "/dashboard/analytics", icon: BarChart3 },
-  { title: "ربط المتجر", url: "/dashboard/store", icon: ShoppingBag },
-  { title: "قوالب جاهزة ✨", url: "/dashboard/templates", icon: Library },
+const groups = [
+  {
+    label: null,
+    items: [
+      { title: "الرئيسية", url: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "الذكاء الاصطناعي",
+    items: [
+      { title: "كاتب المحتوى", url: "/dashboard/writer", icon: Pen },
+      { title: "مولّد الإعلانات", url: "/dashboard/ad-generator", icon: Wand2 },
+      { title: "تجسس المنافسين", url: "/dashboard/competitor-spy", icon: Eye },
+      { title: "A/B اختبار", url: "/dashboard/ab-testing", icon: FlaskConical },
+      { title: "صانع الريلز", url: "/dashboard/reels", icon: Video },
+    ],
+  },
+  {
+    label: "الاستوديو المرئي",
+    items: [
+      { title: "استوديو المصمم", url: "/dashboard/creator", icon: Sparkles },
+      { title: "استوديو التصوير", url: "/dashboard/photoshoot", icon: Camera },
+      { title: "استوديو التعديل", url: "/dashboard/edit-studio", icon: Edit3 },
+      { title: "استوديو الصور", url: "/dashboard/studio", icon: Image },
+      { title: "تبديل الوجوه", url: "/dashboard/face-swap", icon: ArrowLeftRight },
+      { title: "تجربة افتراضية", url: "/dashboard/virtual-tryon", icon: Shirt },
+      { title: "تكبير الصور HD", url: "/dashboard/upscaler", icon: ZoomIn },
+      { title: "سكتش لصورة", url: "/dashboard/sketch-to-image", icon: PenTool },
+    ],
+  },
+  {
+    label: "النشر والإدارة",
+    items: [
+      { title: "مكتبة المحتوى", url: "/dashboard/library", icon: Library },
+      { title: "المخطط والجدولة", url: "/dashboard/scheduler", icon: Calendar },
+      { title: "التحليلات", url: "/dashboard/analytics", icon: BarChart3 },
+      { title: "قوالب جاهزة ✨", url: "/dashboard/templates", icon: Library },
+      { title: "ربط المتجر", url: "/dashboard/store", icon: ShoppingBag },
+    ],
+  },
 ];
 
 const bottomItems = [
@@ -75,46 +95,58 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-l border-border/50 bg-surface hidden md:flex">
-      <SidebarContent className="bg-surface flex flex-col h-full py-4">
+      <SidebarContent className="bg-surface flex flex-col h-full py-4 overflow-y-auto scrollbar-hide">
         {/* Logo */}
-        <div className={`flex items-center gap-2 px-4 mb-6 ${collapsed ? "justify-center" : ""}`}>
+        <div className={`flex items-center gap-2 px-4 mb-6 shrink-0 ${collapsed ? "justify-center" : ""}`}>
           <div className="w-8 h-8 rounded-lg btn-gold flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4" />
           </div>
           {!collapsed && <span className="text-lg font-black text-gradient-gold">Moda AI</span>}
         </div>
 
-        {/* Main nav */}
-        <SidebarGroup className="flex-1">
-          {!collapsed && (
-            <SidebarGroupLabel className="text-muted-foreground text-xs px-4 mb-2">الأدوات</SidebarGroupLabel>
-          )}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mx-2 transition-all duration-200 ${
-                        isActive(item.url)
-                          ? "bg-primary/15 text-primary border border-primary/25"
-                          : "text-muted-foreground hover:text-foreground hover:bg-surface-2"
-                      }`}
-                    >
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Grouped nav */}
+        {groups.map((group, gi) => (
+          <SidebarGroup key={gi} className={gi === 0 ? "shrink-0" : "shrink-0"}>
+            {!collapsed && group.label && (
+              <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest px-4 mb-1 font-bold">
+                {group.label}
+              </SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={`flex items-center gap-3 px-4 py-2 rounded-xl mx-2 transition-all duration-200 ${
+                          isActive(item.url)
+                            ? "bg-primary/15 text-primary border border-primary/25"
+                            : "text-muted-foreground hover:text-foreground hover:bg-surface-2"
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+
+        {/* Separator */}
+        <div className="mx-4 my-2 h-px bg-border/40 shrink-0" />
 
         {/* Bottom nav */}
-        <SidebarGroup>
+        <SidebarGroup className="shrink-0">
+          {!collapsed && (
+            <SidebarGroupLabel className="text-muted-foreground/60 text-[10px] uppercase tracking-widest px-4 mb-1 font-bold">
+              الحساب
+            </SidebarGroupLabel>
+          )}
           <SidebarGroupContent>
             <SidebarMenu>
               {bottomItems.map((item) => (
@@ -123,13 +155,13 @@ export function DashboardSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mx-2 transition-all duration-200 ${
+                      className={`flex items-center gap-3 px-4 py-2 rounded-xl mx-2 transition-all duration-200 ${
                         isActive(item.url)
                           ? "bg-primary/15 text-primary border border-primary/25"
                           : "text-muted-foreground hover:text-foreground hover:bg-surface-2"
                       }`}
                     >
-                      <item.icon className="w-5 h-5 shrink-0" />
+                      <item.icon className="w-4 h-4 shrink-0" />
                       {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -140,7 +172,7 @@ export function DashboardSidebar() {
         </SidebarGroup>
 
         {!collapsed && (
-          <div className="mx-4 mt-4">
+          <div className="mx-4 mt-4 shrink-0">
             <UsageMeter compact />
           </div>
         )}

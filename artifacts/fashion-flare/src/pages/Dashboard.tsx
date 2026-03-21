@@ -110,7 +110,10 @@ const Dashboard = () => {
                   <Icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
               </div>
-              <div className="text-2xl font-black text-foreground">{loading ? "—" : stat.value}</div>
+              {loading
+                ? <div className="h-8 w-16 bg-surface-2 rounded-lg animate-pulse" />
+                : <div className="text-2xl font-black text-foreground">{stat.value}</div>
+              }
               <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
             </div>
           );

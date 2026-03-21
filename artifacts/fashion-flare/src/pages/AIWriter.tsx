@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { 
   Wand2, Copy, RefreshCw, Download, Check, Save, Calendar, 
@@ -66,6 +66,27 @@ const AIWriter = () => {
 
   usePageTitle("مخطط الحملات الذكي");
   const [saving, setSaving] = useState(false);
+  const [generatingStep, setGeneratingStep] = useState(0);
+
+  const GENERATING_STEPS = [
+    "تحليل رؤية الحملة...",
+    "تحديد أسلوب المحتوى...",
+    "كتابة 9 كابشنات فريدة...",
+    "توليد سيناريوهات بصرية...",
+    "بناء جدول النشر...",
+    "مراجعة المحتوى النهائي...",
+  ];
+
+  useEffect(() => {
+    if (!isGeneratingPlan) {
+      setGeneratingStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setGeneratingStep((s) => (s + 1) % GENERATING_STEPS.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [isGeneratingPlan]);
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -470,6 +491,45 @@ const AIWriter = () => {
 
         {/* Loading Announcer */}
         <LoadingAnnouncer isLoading={isGeneratingPlan} message="جاري بناء خطة الحملة..." />
+
+        {/* Animated progress card */}
+        {isGeneratingPlan && (
+          <div className="glass-card gold-border rounded-2xl p-6 glow-gold">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-lg btn-gold flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">Moda AI يبني حملتك...</p>
+                <p className="text-xs text-muted-foreground">دي بتاخد من 30 ل 60 ثانية</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {GENERATING_STEPS.map((step, idx) => {
+                const done = idx < generatingStep;
+                const active = idx === generatingStep;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-500 ${
+                      active ? "bg-primary/10 border border-primary/20" : "opacity-40"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black transition-all ${
+                      done ? "btn-gold" : active ? "border-2 border-primary animate-pulse bg-primary/10" : "bg-surface-2"
+                    }`}>
+                      {done ? "✓" : idx + 1}
+                    </div>
+                    <span className={`text-sm font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                      {step}
+                    </span>
+                    {active && <RefreshCw className="w-3.5 h-3.5 text-primary animate-spin mr-auto" />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

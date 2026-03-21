@@ -154,11 +154,20 @@ const ContentLibrary = () => {
           <p className="text-foreground font-bold mb-1">
             {totalCount === 0 ? "مكتبتك فاضية لسه" : "مفيش نتائج"}
           </p>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm mb-5">
             {totalCount === 0
               ? "ابدأ بإنشاء محتوى من كاتب المحتوى الذكي"
               : "حاول تغير كلمة البحث أو الفلتر"}
           </p>
+          {totalCount === 0 && (
+            <a
+              href="/dashboard/writer"
+              className="btn-gold px-6 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2"
+            >
+              <span>✨</span>
+              إنشاء محتوى جديد
+            </a>
+          )}
         </div>
       ) : (
         <>
