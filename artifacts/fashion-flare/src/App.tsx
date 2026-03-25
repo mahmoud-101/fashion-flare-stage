@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -16,7 +16,6 @@ const AuthPage = React.lazy(() => import("./pages/AuthPage"));
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const AIWriter = React.lazy(() => import("./pages/AIWriter"));
 const ImageStudio = React.lazy(() => import("./pages/ImageStudio"));
-const ReelsMaker = React.lazy(() => import("./pages/ReelsMaker"));
 const Scheduler = React.lazy(() => import("./pages/Scheduler"));
 const Analytics = React.lazy(() => import("./pages/Analytics"));
 const StoreConnect = React.lazy(() => import("./pages/StoreConnect"));
@@ -35,10 +34,10 @@ const ABTesting = React.lazy(() => import("./pages/ABTesting"));
 const ReferralPage = React.lazy(() => import("./pages/ReferralPage"));
 const TemplatesPage = React.lazy(() => import("./pages/TemplatesPage"));
 const HelpPage = React.lazy(() => import("./pages/HelpPage"));
-const FaceSwapPage = React.lazy(() => import("./pages/FaceSwapPage"));
-const VirtualTryOnPage = React.lazy(() => import("./pages/VirtualTryOnPage"));
 const ImageUpscalerPage = React.lazy(() => import("./pages/ImageUpscalerPage"));
-const SketchToImagePage = React.lazy(() => import("./pages/SketchToImagePage"));
+const AboutPage = React.lazy(() => import("./pages/AboutPage"));
+const HashtagGenerator = React.lazy(() => import("./pages/HashtagGenerator"));
+const PricingPage = React.lazy(() => import("./pages/PricingPage"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -65,8 +64,12 @@ const App = () => (
               <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/login" element={<Navigate to="/auth" replace />} />
+              <Route path="/register" element={<Navigate to="/auth" replace />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/dashboard/writer" element={<ProtectedRoute><AIWriter /></ProtectedRoute>} />
               <Route path="/dashboard/library" element={<ProtectedRoute><ContentLibrary /></ProtectedRoute>} />
@@ -74,7 +77,7 @@ const App = () => (
               <Route path="/dashboard/creator" element={<ProtectedRoute><CreatorStudio /></ProtectedRoute>} />
               <Route path="/dashboard/photoshoot" element={<ProtectedRoute><PhotoshootPage /></ProtectedRoute>} />
               <Route path="/dashboard/edit-studio" element={<ProtectedRoute><EditStudioPage /></ProtectedRoute>} />
-              <Route path="/dashboard/reels" element={<ProtectedRoute><ReelsMaker /></ProtectedRoute>} />
+              <Route path="/dashboard/reels" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard/scheduler" element={<ProtectedRoute><Scheduler /></ProtectedRoute>} />
               <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/dashboard/store" element={<ProtectedRoute><StoreConnect /></ProtectedRoute>} />
@@ -87,10 +90,11 @@ const App = () => (
               <Route path="/dashboard/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
               <Route path="/dashboard/templates" element={<ProtectedRoute><TemplatesPage /></ProtectedRoute>} />
               <Route path="/dashboard/help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} />
-              <Route path="/dashboard/face-swap" element={<ProtectedRoute><FaceSwapPage /></ProtectedRoute>} />
-              <Route path="/dashboard/virtual-tryon" element={<ProtectedRoute><VirtualTryOnPage /></ProtectedRoute>} />
+              <Route path="/dashboard/face-swap" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard/virtual-tryon" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard/upscaler" element={<ProtectedRoute><ImageUpscalerPage /></ProtectedRoute>} />
-              <Route path="/dashboard/sketch-to-image" element={<ProtectedRoute><SketchToImagePage /></ProtectedRoute>} />
+              <Route path="/dashboard/sketch-to-image" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard/hashtags" element={<ProtectedRoute><HashtagGenerator /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
