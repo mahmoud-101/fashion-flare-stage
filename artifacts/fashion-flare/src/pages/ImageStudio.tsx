@@ -6,6 +6,7 @@ import {
   ToggleLeft, ToggleRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ErrorCard } from "@/components/ErrorCard";
@@ -158,18 +159,15 @@ const ImageStudio = () => {
 
     const promises = scenarios.map(async (scenario, idx) => {
       try {
-        const { data, error } = await supabase.functions.invoke("generate-campaign-images", {
-          body: { productImages: images, scenario: buildPrompt(scenario), mood: moodValue, customPrompt },
+        const data = await callEdgeFunction("generate-campaign-images", {
+          productImages: images, scenario: buildPrompt(scenario), mood: moodValue, customPrompt,
         });
-
-        if (error) throw new Error(error.message);
-        if (data?.error) throw new Error(data.error);
-
-        const img = data?.imageUrl || data?.resultImage || null;
+        const d = data as Record<string, unknown>;
+        const img = d?.imageUrl || d?.resultImage || null;
 
         setResults(prev => {
           const next = [...prev];
-          next[idx] = { ...next[idx], image: img, description: data.description || null, isLoading: false };
+          next[idx] = { ...next[idx], image: img as string | null, description: d.description as string || null, isLoading: false };
           return next;
         });
       } catch (err: unknown) {
@@ -209,17 +207,15 @@ const ImageStudio = () => {
 
     try {
       const images = productImages.map(p => ({ base64: p.base64, mimeType: p.mimeType }));
-      const { data, error } = await supabase.functions.invoke("generate-campaign-images", {
-        body: { productImages: images, scenario: buildPrompt(scenario), mood: selectedMood, customPrompt },
+      const data = await callEdgeFunction("generate-campaign-images", {
+        productImages: images, scenario: buildPrompt(scenario), mood: selectedMood, customPrompt,
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-
-      const img = data?.imageUrl || data?.resultImage;
+      const d = data as Record<string, unknown>;
+      const img = d?.imageUrl || d?.resultImage;
 
       setResults(prev => {
         const next = [...prev];
-        next[idx] = { ...next[idx], image: img, description: data.description, isLoading: false };
+        next[idx] = { ...next[idx], image: img as string, description: d.description as string, isLoading: false };
         return next;
       });
     } catch (err: unknown) {
