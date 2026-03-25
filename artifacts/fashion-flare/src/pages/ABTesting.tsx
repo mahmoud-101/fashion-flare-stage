@@ -3,8 +3,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   Sparkles, TrendingUp, Download, Loader2, BarChart3, CheckCircle, Trophy,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
@@ -36,12 +36,11 @@ const ABTesting = () => {
       setWinner(null);
 
       try {
-        const { data, error } = await supabase.functions.invoke("generate-content", {
-          body: {
-            platform: "ad",
-            product: product,
-            contentType: "إعلان مدفوع",
-            extra: `Generate 4 A/B test variations for this product ad.
+        const data = await callEdgeFunction("generate-content", {
+          platform: "ad",
+          product: product,
+          contentType: "إعلان مدفوع",
+          extra: `Generate 4 A/B test variations for this product ad.
 ${originalAd ? `Original ad text: "${originalAd}"` : ""}
 
 Return ONLY a JSON array of 4 objects with these fields:
@@ -61,14 +60,10 @@ C = Social Proof/Authority
 D = Value/Benefit-focused
 
 Return only valid JSON array.`,
-            dialect: "egyptian",
-          },
+          dialect: "egyptian",
         });
 
-        if (error) throw new Error(error.message);
-        if (data?.error) throw new Error(data.error);
-
-        let output = data.output || "";
+        let output = (data as Record<string, unknown>).output as string || "";
         output = output.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         
         const match = output.match(/\[[\s\S]*\]/);
@@ -90,8 +85,19 @@ Return only valid JSON array.`,
   };
 
   return (
-    <DashboardLayout title="A/B اختبار الإعلانات" subtitle="ولّد نسخ مختلفة وقارن الأداء المتوقع قبل ما تصرف ميزانية">
+    <DashboardLayout title="مقارنة نسخ الإعلانات" subtitle="ولّد 4 نسخ مختلفة لإعلانك وشوف أي زاوية أقوى قبل ما تصرف ميزانية">
       <div className="max-w-5xl space-y-6">
+
+        {/* AI Disclaimer */}
+        <div className="flex items-start gap-3 bg-amber-500/8 border border-amber-500/25 rounded-xl px-4 py-3">
+          <span className="text-amber-400 text-base shrink-0">⚠️</span>
+          <div>
+            <p className="text-xs font-bold text-amber-300 mb-0.5">أرقام تقديرية — مش بيانات حقيقية</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              نسب CTR والـ Conversion المعروضة هي <span className="font-bold text-foreground">تقديرات من الذكاء الاصطناعي</span> بناءً على أفضل الممارسات — وليست بيانات من حملاتك الفعلية. استخدمها كدليل للاختيار، والنتائج الحقيقية تعتمد على ميزانيتك وجمهورك.
+            </p>
+          </div>
+        </div>
 
         {/* Input */}
         <div className="glass-card gold-border rounded-2xl p-6 space-y-4">
@@ -106,7 +112,7 @@ Return only valid JSON array.`,
             </div>
           </div>
           <button onClick={generateVariants} disabled={loading || !product.trim()} className="btn-gold px-8 py-3 rounded-xl text-sm font-black flex items-center gap-2 disabled:opacity-50">
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري التوليد...</> : <><Sparkles className="w-4 h-4" /> ولّد 4 نسخ A/B</>}
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري التوليد...</> : <><Sparkles className="w-4 h-4" /> ولّد 4 نسخ للمقارنة</>}
           </button>
         </div>
 
