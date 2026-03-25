@@ -8,6 +8,7 @@ import AdScoreCard from "@/components/studio/AdScoreCard";
 import CaptionVariations from "@/components/studio/CaptionVariations";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ErrorCard } from "@/components/ErrorCard";
@@ -78,10 +79,7 @@ const AIWriter = () => {
   ];
 
   useEffect(() => {
-    if (!isGeneratingPlan) {
-      setGeneratingStep(0);
-      return;
-    }
+    if (!isGeneratingPlan) { setGeneratingStep(0); return; }
     const interval = setInterval(() => {
       setGeneratingStep((s) => (s + 1) % GENERATING_STEPS.length);
     }, 2800);
@@ -135,20 +133,17 @@ const AIWriter = () => {
       setIdeas([]);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("generate-campaign-plan", {
-        body: {
-          prompt: prompt.slice(0, 2000),
-          targetMarket: TARGET_MARKETS.find((m) => m.id === targetMarket)?.label || targetMarket,
-          dialect: DIALECTS.find((d) => d.id === dialect)?.label || dialect,
-          productImage: productImages[0] || null,
-        },
+      const data = await callEdgeFunction("generate-campaign-plan", {
+        prompt: prompt.slice(0, 2000),
+        targetMarket: TARGET_MARKETS.find((m) => m.id === targetMarket)?.label || targetMarket,
+        dialect: DIALECTS.find((d) => d.id === dialect)?.label || dialect,
+        productImage: productImages[0] || null,
       });
 
-      if (fnError) throw new Error(fnError.message);
-      if (data?.error) throw new Error(data.error);
-      if (!data?.ideas || !Array.isArray(data.ideas)) throw new Error("فشل توليد الخطة");
+      const typedData = data as Record<string, unknown>;
+      if (!typedData?.ideas || !Array.isArray(typedData.ideas)) throw new Error("فشل توليد الخطة");
 
-      const planIdeas: PlanIdea[] = data.ideas.map((idea: Record<string, string>, idx: number) => ({
+      const planIdeas: PlanIdea[] = (typedData.ideas as Record<string, string>[]).map((idea, idx) => ({
         id: idea.id || `idea-${idx}`,
         tov: idea.tov || "",
         caption: idea.caption || "",
@@ -183,18 +178,13 @@ const AIWriter = () => {
     });
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("generate-campaign-images", {
-        body: {
-          productImage: productImages[0] || null,
-          scenarios: [ideas[idx].scenario],
-          mood: "Minimal White",
-        },
+      const data = await callEdgeFunction("generate-campaign-images", {
+        productImage: productImages[0] || null,
+        scenarios: [ideas[idx].scenario],
+        mood: "Minimal White",
       });
 
-      if (fnError) throw new Error(fnError.message);
-      if (data?.error) throw new Error(data.error);
-
-      const imageResult = data?.results?.[0];
+      const imageResult = (data as Record<string, unknown[]>)?.results?.[0] as Record<string, unknown> | undefined;
       if (!imageResult?.image) throw new Error("فشل توليد الصورة");
 
       setIdeas((prev) => {
@@ -227,103 +217,64 @@ const AIWriter = () => {
     document.body.removeChild(link);
   };
 
-  const handleExportPDF = async () => {
-    const { default: jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-    // Load Tajawal font (base64 would be ideal, but we use built-in for now with RTL workaround)
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-    const contentWidth = pageWidth - margin * 2;
-    let y = 20;
-
-    // Helper for RTL text (reverse for jsPDF)
-    const rtlText = (text: string) => text.split("").reverse().join("");
-
-    // Header
-    doc.setFontSize(22);
-    doc.setTextColor(201, 169, 110); // Gold
-    doc.text("Moda.ai", pageWidth - margin, y, { align: "right" });
-    y += 10;
-
-    doc.setFontSize(14);
-    doc.setTextColor(255, 255, 255);
-    doc.setFillColor(15, 15, 15);
-    doc.rect(0, 0, pageWidth, 297, "F"); // Dark background
-
-    // Re-draw header on dark bg
-    y = 20;
-    doc.setTextColor(201, 169, 110);
-    doc.setFontSize(20);
-    doc.text("Moda.ai - Campaign Plan", pageWidth - margin, y, { align: "right" });
-    y += 12;
-
-    // Meta info
-    doc.setFontSize(10);
-    doc.setTextColor(180, 180, 180);
+  const handleExportPDF = () => {
     const marketLabel = TARGET_MARKETS.find((m) => m.id === targetMarket)?.label || targetMarket;
     const dialectLabel = DIALECTS.find((d) => d.id === dialect)?.label || dialect;
-    doc.text(`Market: ${marketLabel} | Dialect: ${dialectLabel}`, pageWidth - margin, y, { align: "right" });
-    y += 8;
-    doc.text(`Date: ${new Date().toLocaleDateString("ar-EG")}`, pageWidth - margin, y, { align: "right" });
-    y += 12;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
 
-    // Divider
-    doc.setDrawColor(201, 169, 110);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 10;
+    const postsHtml = ideas.map((idea, idx) => `
+      <div class="post-card">
+        <div class="post-number">#${idx + 1} — <span class="tov">${idea.tov}</span></div>
+        <div class="caption">${idea.caption.replace(/\n/g, "<br/>")}</div>
+        ${idea.schedule ? `<div class="schedule">📅 ${idea.schedule}</div>` : ""}
+      </div>
+    `).join("");
 
-    // Ideas
-    ideas.forEach((idea, idx) => {
-      if (y > 260) {
-        doc.addPage();
-        doc.setFillColor(15, 15, 15);
-        doc.rect(0, 0, pageWidth, 297, "F");
-        y = 20;
-      }
+    const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <title>خطة حملة Moda AI</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Tajawal', Arial, sans-serif; direction: rtl; background: #fff; color: #111; padding: 32px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #c9a96e; padding-bottom: 16px; margin-bottom: 24px; }
+    .logo { font-size: 22px; font-weight: 900; color: #c9a96e; }
+    .meta { font-size: 11px; color: #888; text-align: left; line-height: 1.8; }
+    .post-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; page-break-inside: avoid; }
+    .post-number { font-size: 13px; font-weight: 700; color: #c9a96e; margin-bottom: 10px; }
+    .tov { font-weight: 900; }
+    .caption { font-size: 13px; line-height: 1.9; color: #222; white-space: pre-wrap; }
+    .schedule { margin-top: 12px; font-size: 11px; color: #888; }
+    .footer { text-align: center; font-size: 10px; color: #bbb; margin-top: 32px; border-top: 1px solid #eee; padding-top: 12px; }
+    @media print { body { padding: 16px; } .post-card { border-color: #ddd; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">✦ Moda AI</div>
+    <div class="meta">
+      السوق: ${marketLabel} | اللهجة: ${dialectLabel}<br/>
+      التاريخ: ${dateStr}
+    </div>
+  </div>
+  ${postsHtml}
+  <div class="footer">تم إنشاء هذه الخطة بواسطة Moda AI — moda-ai.com</div>
+</body>
+</html>`;
 
-      // Post number + TOV
-      doc.setFontSize(12);
-      doc.setTextColor(201, 169, 110);
-      doc.text(`#${idx + 1} — ${idea.tov}`, pageWidth - margin, y, { align: "right" });
-      y += 7;
-
-      // Caption (split into lines)
-      doc.setFontSize(9);
-      doc.setTextColor(220, 220, 220);
-      const lines = doc.splitTextToSize(idea.caption, contentWidth);
-      lines.forEach((line: string) => {
-        if (y > 275) {
-          doc.addPage();
-          doc.setFillColor(15, 15, 15);
-          doc.rect(0, 0, pageWidth, 297, "F");
-          y = 20;
-        }
-        doc.text(line, pageWidth - margin, y, { align: "right" });
-        y += 5;
-      });
-
-      // Schedule
-      doc.setFontSize(8);
-      doc.setTextColor(140, 140, 140);
-      doc.text(`Schedule: ${idea.schedule}`, pageWidth - margin, y, { align: "right" });
-      y += 10;
-
-      // Divider
-      doc.setDrawColor(50, 50, 50);
-      doc.setLineWidth(0.2);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
+    const win = window.open("", "_blank");
+    if (!win) {
+      toast.error("يرجى السماح بالنوافذ المنبثقة لتصدير الـ PDF");
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.addEventListener("load", () => {
+      setTimeout(() => { win.print(); }, 300);
     });
-
-    // Footer
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("Generated by Moda.ai", pageWidth / 2, 290, { align: "center" });
-
-    doc.save(`moda-campaign-plan-${Date.now()}.pdf`);
-    toast.success("تم تصدير الـ PDF بنجاح");
+    toast.success("✅ جاري فتح نافذة الطباعة — اختر 'حفظ كـ PDF'");
   };
 
   const saveAllToLibrary = async () => {
