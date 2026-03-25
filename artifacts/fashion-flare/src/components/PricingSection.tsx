@@ -10,11 +10,13 @@ const plans = [
     price: "0",
     currency: "ج.م",
     period: "للأبد",
-    desc: "ابدأ مجاناً وجرّب الأدوات",
+    priceNote: null,
+    savingNote: null,
+    desc: "جرّب المنصة بدون أي التزام",
     features: [
-      "5 محتوى يومياً",
+      "3 محتوى يومياً",
       "3 صور يومياً",
-      "1 ريلز يومياً",
+      "1 سكريبت ريلز يومياً",
       "مكتبة المحتوى",
       "استوديو الصور الأساسي",
     ],
@@ -29,16 +31,19 @@ const plans = [
     price: "400",
     currency: "ج.م",
     period: "شهرياً",
+    priceNote: "≈ 80 ر.س / 110 د.إ",
+    savingNote: "يُغني عن كاتب محتوى بـ 3,000+ ج.م شهرياً",
     desc: "للبراندات الجادة في النمو",
     features: [
       "50 محتوى يومياً",
       "30 صورة يومياً",
-      "10 ريلز يومياً",
-      "ربط متجر Salla",
+      "10 سكريبتات ريلز يومياً",
+      "مولّد الهاشتاجات",
+      "ربط متاجر Salla & Shopify & Zid",
       "جدولة المحتوى",
       "تصدير بدون علامة مائية",
       "تحليلات الأداء",
-      "دعم أولوية",
+      "دعم واتساب أولوية",
     ],
     popular: true,
     btnClass: "btn-gold",
@@ -51,13 +56,16 @@ const plans = [
     price: "800",
     currency: "ج.م",
     period: "شهرياً",
+    priceNote: "≈ 160 ر.س / 220 د.إ",
+    savingNote: "يكافئ وكالة محتوى بعشرة أضعاف التكلفة",
     desc: "للوكالات والمتاجر الكبيرة",
     features: [
       "محتوى غير محدود",
       "صور غير محدودة",
-      "ريلز غير محدودة",
       "كل مميزات الاحترافي",
-      "دعم مخصص",
+      "حسابات فرعية متعددة",
+      "مدير حساب مخصص",
+      "دعم مباشر بأولوية قصوى",
     ],
     popular: false,
     btnClass: "glass-card gold-border hover:border-primary/60",
@@ -157,7 +165,7 @@ const PricingSection = () => {
                   </div>
                 </div>
 
-                <div className="mb-2">
+                <div className="mb-1">
                   <span className="text-4xl font-black text-gradient-gold">{displayPrice}</span>
                   <span className="text-2xl font-bold text-gradient-gold">{plan.currency}</span>
                   <span className="text-muted-foreground text-sm mr-1">
@@ -165,21 +173,35 @@ const PricingSection = () => {
                   </span>
                 </div>
 
+                {plan.priceNote && (
+                  <p className="text-xs text-muted-foreground mb-1">{plan.priceNote}</p>
+                )}
+
                 {billing === "yearly" && plan.price !== "0" && (
-                  <p className="text-xs text-primary mb-2">
+                  <p className="text-xs text-primary mb-1">
                     ✅ وفّر {Math.round(parseInt(plan.price) * 12 * 0.2)} ج.م سنوياً
                   </p>
+                )}
+
+                {plan.savingNote && (
+                  <p className="text-xs text-green-400 mb-3 font-medium">💡 {plan.savingNote}</p>
                 )}
 
                 <p className="text-sm text-muted-foreground mb-6">{plan.desc}</p>
 
                 <motion.a
-                  href="/auth"
+                  href={
+                    plan.name === "free"
+                      ? "/auth"
+                      : plan.name === "pro"
+                      ? "/auth?redirect=/dashboard/billing&plan=pro"
+                      : "/auth?redirect=/dashboard/billing&plan=agency"
+                  }
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   className={`${plan.btnClass} w-full py-3 rounded-xl text-center font-bold text-sm block mb-8 transition-all`}
                 >
-                  {plan.name === "free" ? "ابدأ مجاناً" : plan.name === "pro" ? "اشترك الآن" : "تواصل معنا"}
+                  {plan.name === "free" ? "ابدأ مجاناً" : plan.name === "pro" ? "اشترك الآن ←" : "تواصل معنا"}
                 </motion.a>
 
                 <ul className="space-y-3">
