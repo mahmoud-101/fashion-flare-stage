@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   Pen,
   Image,
-  Video,
   Calendar,
   BarChart3,
   ShoppingBag,
@@ -31,10 +30,8 @@ import {
   FlaskConical,
   Gift,
   HelpCircle,
-  ArrowLeftRight,
-  Shirt,
   ZoomIn,
-  PenTool,
+  Hash,
 } from "lucide-react";
 
 const groups = [
@@ -50,8 +47,8 @@ const groups = [
       { title: "كاتب المحتوى", url: "/dashboard/writer", icon: Pen },
       { title: "مولّد الإعلانات", url: "/dashboard/ad-generator", icon: Wand2 },
       { title: "تجسس المنافسين", url: "/dashboard/competitor-spy", icon: Eye },
-      { title: "A/B اختبار", url: "/dashboard/ab-testing", icon: FlaskConical },
-      { title: "صانع الريلز", url: "/dashboard/reels", icon: Video },
+      { title: "مقارنة الإعلانات", url: "/dashboard/ab-testing", icon: FlaskConical },
+      { title: "مولّد الهاشتاجات", url: "/dashboard/hashtags", icon: Hash },
     ],
   },
   {
@@ -61,10 +58,7 @@ const groups = [
       { title: "استوديو التصوير", url: "/dashboard/photoshoot", icon: Camera },
       { title: "استوديو التعديل", url: "/dashboard/edit-studio", icon: Edit3 },
       { title: "استوديو الصور", url: "/dashboard/studio", icon: Image },
-      { title: "تبديل الوجوه", url: "/dashboard/face-swap", icon: ArrowLeftRight },
-      { title: "تجربة افتراضية", url: "/dashboard/virtual-tryon", icon: Shirt },
       { title: "تكبير الصور HD", url: "/dashboard/upscaler", icon: ZoomIn },
-      { title: "سكتش لصورة", url: "/dashboard/sketch-to-image", icon: PenTool },
     ],
   },
   {
