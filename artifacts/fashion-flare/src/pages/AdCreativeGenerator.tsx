@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -91,24 +92,21 @@ const AdCreativeGenerator = () => {
           }
         }
 
-        const { data, error } = await supabase.functions.invoke("generate-ad-creative", {
-          body: {
-            productImage: { base64: productImage.base64, mimeType: productImage.mimeType },
-            headline: headline || undefined,
-            cta: cta || undefined,
-            price: price || undefined,
-            brandName: brandName || undefined,
-            brandColor: brandColor || undefined,
-            style,
-            size,
-            variations,
-          },
+        const data = await callEdgeFunction("generate-ad-creative", {
+          productImage: { base64: productImage.base64, mimeType: productImage.mimeType },
+          headline: headline || undefined,
+          cta: cta || undefined,
+          price: price || undefined,
+          brandName: brandName || undefined,
+          brandColor: brandColor || undefined,
+          style,
+          size,
+          variations,
         });
 
-        if (error) throw new Error(error.message);
-        if (data?.error) throw new Error(data.error);
-        setCreatives(data.creatives || []);
-        toast.success(`✨ تم توليد ${data.creatives?.length || 0} إعلانات!`);
+        const creatives = (data as Record<string, unknown>).creatives as AdCreative[] || [];
+        setCreatives(creatives);
+        toast.success(`✨ تم توليد ${creatives.length} إعلانات!`);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "فشل التوليد");
       } finally {
