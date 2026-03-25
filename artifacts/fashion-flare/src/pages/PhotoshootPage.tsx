@@ -4,8 +4,8 @@ import {
   Upload, Wand2, Download, RefreshCw, X, Sparkles, Camera, Sun, Moon,
   Zap, Eye, Layers, ChevronDown, ChevronUp, Image as ImageIcon,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { FASHION_AD_TEMPLATES, type FashionAdTemplate } from "@/data/fashionAdTemplates";
 
 // ── Types ──
@@ -106,19 +106,14 @@ const PhotoshootPage = () => {
           ? `${selectedTemplate.scenario}. Camera: ${shot.prompt}. Background: ${selectedBg}.`
           : `${shot.prompt} Background: ${selectedBg}.`;
 
-        const { data, error } = await supabase.functions.invoke("generate-campaign-images", {
-          body: {
-            productImages: images,
-            scenario,
-            mood: selectedTemplate?.mood || "",
-            customPrompt: selectedTemplate?.styling || "",
-          },
+        const data = await callEdgeFunction("generate-campaign-images", {
+          productImages: images,
+          scenario,
+          mood: selectedTemplate?.mood || "",
+          customPrompt: selectedTemplate?.styling || "",
         });
 
-        if (error) throw new Error(error.message);
-        if (data?.error) throw new Error(data.error);
-
-        const img = data?.imageUrl || data?.resultImage || null;
+        const img = (data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null;
         setResults(prev => {
           const next = [...prev];
           next[idx] = { ...next[idx], image: img, isLoading: false };
@@ -165,13 +160,11 @@ const PhotoshootPage = () => {
         ? `${selectedTemplate.scenario}. Camera: ${shot.prompt}. Background: ${selectedBg}.`
         : `${shot.prompt} Background: ${selectedBg}.`;
 
-      const { data, error } = await supabase.functions.invoke("generate-campaign-images", {
-        body: { productImages: images, scenario, mood: selectedTemplate?.mood || "", customPrompt: selectedTemplate?.styling || "" },
+      const data = await callEdgeFunction("generate-campaign-images", {
+        productImages: images, scenario, mood: selectedTemplate?.mood || "", customPrompt: selectedTemplate?.styling || "",
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
 
-      const img = data?.imageUrl || data?.resultImage || null;
+      const img = (data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null;
       setResults(prev => {
         const next = [...prev];
         next[idx] = { ...next[idx], image: img, isLoading: false };
