@@ -75,3 +75,79 @@ export async function callEdgeFunction<T = Record<string, unknown>>(
 
   throw lastErr;
 }
+
+export interface StreamChunk {
+  text: string;
+  done: boolean;
+}
+
+export async function* callEdgeFunctionStream(
+  functionName: string,
+  body: Record<string, unknown>,
+  options: Pick<CallOptions, 'timeoutMs'> = {}
+): AsyncGenerator<string> {
+  const { timeoutMs = 60000 } = options;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl
+    ?? import.meta.env.VITE_SUPABASE_URL;
+
+  const url = `${supabaseUrl}/functions/v1/${functionName}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ...body, stream: true }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(classifyMessage(msg).arabic);
+  }
+
+  if (!response.ok) {
+    clearTimeout(timer);
+    throw new Error(classifyMessage(String(response.status)).arabic);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    clearTimeout(timer);
+    throw new Error(ARABIC_ERRORS.SERVER);
+  }
+
+  const decoder = new TextDecoder();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+      for (const line of lines) {
+        const json = line.slice(6).trim();
+        if (json === '[DONE]') return;
+        try {
+          const parsed = JSON.parse(json) as { text?: string; content?: string };
+          const text = parsed.text ?? parsed.content ?? '';
+          if (text) yield text;
+        } catch {
+          if (json) yield json;
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+    reader.releaseLock();
+  }
+}

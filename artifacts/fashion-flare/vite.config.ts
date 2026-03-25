@@ -1,3 +1,8 @@
+// IMPORTANT: This artifact intentionally uses Tailwind CSS v3 (via PostCSS).
+// Do NOT upgrade to Tailwind v4 or add @tailwindcss/vite here.
+// Reason: The design system uses custom CSS variables and v3-specific utilities
+// (e.g. glass-card, gold-border) that are incompatible with v4's CSS-first config.
+// The mockup-sandbox preview server uses v4 — that is a separate artifact and intentional.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";

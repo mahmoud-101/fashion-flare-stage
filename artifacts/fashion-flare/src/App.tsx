@@ -7,8 +7,17 @@ import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import React, { Suspense } from "react";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import React, { Suspense, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
+
+const AIPage = ({ children }: { children: ReactNode }) => (
+  <ProtectedRoute>
+    <ErrorBoundary>
+      {children}
+    </ErrorBoundary>
+  </ProtectedRoute>
+);
 
 // Lazy loaded pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -39,6 +48,7 @@ const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const HashtagGenerator = React.lazy(() => import("./pages/HashtagGenerator"));
 const PricingPage = React.lazy(() => import("./pages/PricingPage"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
+const ComingSoonPage = React.lazy(() => import("./pages/ComingSoonPage"));
 
 const queryClient = new QueryClient();
 
@@ -60,6 +70,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
+            <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Routes>
               <Route path="/" element={<Index />} />
@@ -71,33 +82,34 @@ const App = () => (
               <Route path="/about" element={<AboutPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/dashboard/writer" element={<ProtectedRoute><AIWriter /></ProtectedRoute>} />
+              <Route path="/dashboard/writer" element={<AIPage><AIWriter /></AIPage>} />
               <Route path="/dashboard/library" element={<ProtectedRoute><ContentLibrary /></ProtectedRoute>} />
-              <Route path="/dashboard/studio" element={<ProtectedRoute><ImageStudio /></ProtectedRoute>} />
-              <Route path="/dashboard/creator" element={<ProtectedRoute><CreatorStudio /></ProtectedRoute>} />
-              <Route path="/dashboard/photoshoot" element={<ProtectedRoute><PhotoshootPage /></ProtectedRoute>} />
-              <Route path="/dashboard/edit-studio" element={<ProtectedRoute><EditStudioPage /></ProtectedRoute>} />
-              <Route path="/dashboard/reels" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard/studio" element={<AIPage><ImageStudio /></AIPage>} />
+              <Route path="/dashboard/creator" element={<AIPage><CreatorStudio /></AIPage>} />
+              <Route path="/dashboard/photoshoot" element={<AIPage><PhotoshootPage /></AIPage>} />
+              <Route path="/dashboard/edit-studio" element={<AIPage><EditStudioPage /></AIPage>} />
+              <Route path="/dashboard/reels" element={<AIPage><ComingSoonPage /></AIPage>} />
               <Route path="/dashboard/scheduler" element={<ProtectedRoute><Scheduler /></ProtectedRoute>} />
               <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/dashboard/store" element={<ProtectedRoute><StoreConnect /></ProtectedRoute>} />
               <Route path="/dashboard/brand" element={<ProtectedRoute><BrandSettings /></ProtectedRoute>} />
               <Route path="/dashboard/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
               <Route path="/dashboard/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-              <Route path="/dashboard/ad-generator" element={<ProtectedRoute><AdCreativeGenerator /></ProtectedRoute>} />
-              <Route path="/dashboard/competitor-spy" element={<ProtectedRoute><CompetitorSpy /></ProtectedRoute>} />
-              <Route path="/dashboard/ab-testing" element={<ProtectedRoute><ABTesting /></ProtectedRoute>} />
+              <Route path="/dashboard/ad-generator" element={<AIPage><AdCreativeGenerator /></AIPage>} />
+              <Route path="/dashboard/competitor-spy" element={<AIPage><CompetitorSpy /></AIPage>} />
+              <Route path="/dashboard/ab-testing" element={<AIPage><ABTesting /></AIPage>} />
               <Route path="/dashboard/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
               <Route path="/dashboard/templates" element={<ProtectedRoute><TemplatesPage /></ProtectedRoute>} />
               <Route path="/dashboard/help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} />
-              <Route path="/dashboard/face-swap" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard/virtual-tryon" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard/upscaler" element={<ProtectedRoute><ImageUpscalerPage /></ProtectedRoute>} />
-              <Route path="/dashboard/sketch-to-image" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard/hashtags" element={<ProtectedRoute><HashtagGenerator /></ProtectedRoute>} />
+              <Route path="/dashboard/face-swap" element={<AIPage><ComingSoonPage /></AIPage>} />
+              <Route path="/dashboard/virtual-tryon" element={<AIPage><ComingSoonPage /></AIPage>} />
+              <Route path="/dashboard/upscaler" element={<AIPage><ImageUpscalerPage /></AIPage>} />
+              <Route path="/dashboard/sketch-to-image" element={<AIPage><ComingSoonPage /></AIPage>} />
+              <Route path="/dashboard/hashtags" element={<AIPage><HashtagGenerator /></AIPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+            </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

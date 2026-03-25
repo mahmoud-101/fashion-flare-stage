@@ -1,3 +1,8 @@
+// IMPORTANT: This preview sandbox intentionally uses Tailwind CSS v4 (@tailwindcss/vite).
+// Do NOT downgrade to v3 or add postcss.config.js here.
+// Reason: The mockup sandbox is an isolated component preview server — it does not share
+// the fashion-flare design system. The main app (artifacts/fashion-flare) uses v3 with
+// PostCSS and must remain on v3. Keep both artifacts' Tailwind versions separate.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";

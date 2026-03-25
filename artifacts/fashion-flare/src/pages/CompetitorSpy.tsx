@@ -2,12 +2,15 @@ import { useState, useRef, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   Upload, Search, TrendingUp, Target, Eye, Lightbulb, Loader2, X, Wand2,
-  AlertTriangle, CheckCircle, ArrowUpRight, Palette as PaletteIcon,
+  AlertTriangle, CheckCircle, ArrowUpRight, Palette as PaletteIcon, Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { callEdgeFunction } from "@/lib/callEdgeFunction";
+import { getCached, setCache } from "@/lib/aiCache";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CompetitorAnalysis {
   overallScore: number;
@@ -29,6 +32,7 @@ interface AdImage {
 }
 
 const CompetitorSpy = () => {
+  const { user } = useAuth();
   const { checkAndProceed, showUpgradeModal, setShowUpgradeModal, limitType, currentUsed, currentLimit } = useCanGenerate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [adImage, setAdImage] = useState<AdImage | null>(null);
@@ -37,6 +41,30 @@ const CompetitorSpy = () => {
   const [analysis, setAnalysis] = useState<CompetitorAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const saveToLibrary = async () => {
+    if (!user || !analysis) return;
+    const title = `تحليل منافس${competitorName ? ` — ${competitorName}` : ""}`;
+    const content = [
+      `نقاط القوة:\n${analysis.strengths.map(s => `• ${s}`).join("\n")}`,
+      `\nنقاط الضعف:\n${analysis.weaknesses.map(s => `• ${s}`).join("\n")}`,
+      `\nفرص التحسين:\n${analysis.opportunities.map(s => `• ${s}`).join("\n")}`,
+      `\nعناوين مقترحة:\n${analysis.suggestedHeadlines.map(s => `• ${s}`).join("\n")}`,
+      `\nالنسخة المحسّنة:\n${analysis.improvedVersion}`,
+    ].join("");
+    const { error } = await supabase.from("saved_content").insert({
+      user_id: user.id,
+      title,
+      content,
+      platform: "ad",
+      status: "draft",
+      product_name: competitorName || null,
+    });
+    if (error) { toast.error("فشل الحفظ"); return; }
+    setSaved(true);
+    toast.success("تم حفظ التحليل في المكتبة ✅");
+  };
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -56,14 +84,34 @@ const CompetitorSpy = () => {
     checkAndProceed("content_generation", async () => {
       setLoading(true);
       setAnalysis(null);
+      setSaved(false);
       try {
-        const data = await callEdgeFunction("analyze-competitor", {
-          adImage: adImage ? { base64: adImage.base64, mimeType: adImage.mimeType } : undefined,
-          adText: adText || undefined,
-          competitorName: competitorName || undefined,
-        });
-        setAnalysis((data as Record<string, unknown>).analysis as CompetitorAnalysis);
-        toast.success("✨ تم تحليل الإعلان!");
+        const canUseCache = !adImage && !!adText.trim();
+        const cacheParams = { adText: adText.trim(), competitorName };
+        let result: CompetitorAnalysis | null = null;
+
+        if (canUseCache) {
+          const cached = await getCached<{ analysis: CompetitorAnalysis }>("competitorSpy", user?.id ?? "anon", cacheParams);
+          if (cached?.analysis) {
+            result = cached.analysis;
+            toast.info("✨ تم استرجاع التحليل من الذاكرة المؤقتة");
+          }
+        }
+
+        if (!result) {
+          const data = await callEdgeFunction("analyze-competitor", {
+            adImage: adImage ? { base64: adImage.base64, mimeType: adImage.mimeType } : undefined,
+            adText: adText || undefined,
+            competitorName: competitorName || undefined,
+          });
+          result = (data as Record<string, unknown>).analysis as CompetitorAnalysis;
+          if (canUseCache) {
+            await setCache("competitorSpy", user?.id ?? "anon", cacheParams, { analysis: result });
+          }
+          toast.success("✨ تم تحليل الإعلان!");
+        }
+
+        setAnalysis(result);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "فشل التحليل");
       } finally {
@@ -226,17 +274,26 @@ const CompetitorSpy = () => {
                   </div>
                 )}
 
-                {/* Generate Better Version */}
-                <button
-                  onClick={() => {
-                    // Navigate to ad creative generator with the improved prompt
-                    toast.success("تم نسخ البرومبت — استخدمه في مولّد الإعلانات");
-                    navigator.clipboard.writeText(analysis.improvedVersion);
-                  }}
-                  className="w-full btn-gold py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                >
-                  <Wand2 className="w-4 h-4" /> ولّد إعلان أفضل من ده <ArrowUpRight className="w-4 h-4" />
-                </button>
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      toast.success("تم نسخ البرومبت — استخدمه في مولّد الإعلانات");
+                      navigator.clipboard.writeText(analysis.improvedVersion);
+                    }}
+                    className="flex-1 btn-gold py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+                  >
+                    <Wand2 className="w-4 h-4" /> ولّد إعلان أفضل <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={saveToLibrary}
+                    disabled={saved}
+                    className="px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saved ? "محفوظ ✓" : "حفظ"}
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>

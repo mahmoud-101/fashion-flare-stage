@@ -8,6 +8,7 @@ import { usePageTitle } from "@/components/AccessibilityHelpers";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { callEdgeFunction } from "@/lib/callEdgeFunction";
+import { getCached, setCache } from "@/lib/aiCache";
 
 const PRODUCT_TYPES = [
   "فساتين", "عبايات", "بلايز", "بناطيل", "جاكيتات", "حقائب", "أحذية", "إكسسوارات",
@@ -86,26 +87,37 @@ const HashtagGenerator = () => {
 الرد يكون JSON بهذا الشكل بالضبط (بدون أي نص إضافي):
 {"groups":[{"label":"هاشتاجات المنتج","tags":["#tag1","#tag2"],"color":"blue"},{"label":"هاشتاجات الفاشون العربي","tags":["#tag1"],"color":"gold"},{"label":"هاشتاجات السوق","tags":["#tag1"],"color":"green"},{"label":"هاشتاجات الترند","tags":["#tag1"],"color":"purple"},{"label":"هاشتاجات البراند","tags":["#tag1"],"color":"red"}]}`;
 
-      const data = await callEdgeFunction("generate-content", {
-        prompt,
-        userId: user?.id,
-        type: "hashtags",
-      });
+      const cacheParams = { brandName, productType: productType || customKeyword, dialect, platform };
+      const cached = await getCached<{ groups: HashtagGroup[] }>("hashtags", user?.id ?? "anon", cacheParams);
+      let parsedGroups: HashtagGroup[] | null = cached?.groups ?? null;
 
-      let result = (data as Record<string, unknown>)?.content || (data as Record<string, unknown>)?.result || "";
-      if (typeof result === "object") result = JSON.stringify(result);
+      if (!parsedGroups) {
+        const data = await callEdgeFunction("generate-content", {
+          prompt,
+          userId: user?.id,
+          type: "hashtags",
+        });
 
-      const jsonMatch = (result as string).match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.groups) {
-          setGroups(parsed.groups);
+        let result = (data as Record<string, unknown>)?.content || (data as Record<string, unknown>)?.result || "";
+        if (typeof result === "object") result = JSON.stringify(result);
+
+        const jsonMatch = (result as string).match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.groups) {
+            parsedGroups = parsed.groups as HashtagGroup[];
+            await setCache("hashtags", user?.id ?? "anon", cacheParams, { groups: parsedGroups });
+          } else {
+            throw new Error("تنسيق غير صحيح");
+          }
         } else {
-          throw new Error("تنسيق غير صحيح");
+          throw new Error("لم تعود هاشتاجات من الذكاء الاصطناعي");
         }
       } else {
-        throw new Error("لم تعود هاشتاجات من الذكاء الاصطناعي");
+        toast.info("✨ تم استرجاع النتائج من الذاكرة المؤقتة");
       }
+
+      if (parsedGroups) setGroups(parsedGroups);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "فشل التوليد";
       toast.error(msg);
