@@ -4,8 +4,8 @@ import {
   Upload, Search, TrendingUp, Target, Eye, Lightbulb, Loader2, X, Wand2,
   AlertTriangle, CheckCircle, ArrowUpRight, Palette as PaletteIcon,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
@@ -57,16 +57,12 @@ const CompetitorSpy = () => {
       setLoading(true);
       setAnalysis(null);
       try {
-        const { data, error } = await supabase.functions.invoke("analyze-competitor", {
-          body: {
-            adImage: adImage ? { base64: adImage.base64, mimeType: adImage.mimeType } : undefined,
-            adText: adText || undefined,
-            competitorName: competitorName || undefined,
-          },
+        const data = await callEdgeFunction("analyze-competitor", {
+          adImage: adImage ? { base64: adImage.base64, mimeType: adImage.mimeType } : undefined,
+          adText: adText || undefined,
+          competitorName: competitorName || undefined,
         });
-        if (error) throw new Error(error.message);
-        if (data?.error) throw new Error(data.error);
-        setAnalysis(data.analysis);
+        setAnalysis((data as Record<string, unknown>).analysis as CompetitorAnalysis);
         toast.success("✨ تم تحليل الإعلان!");
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "فشل التحليل");
