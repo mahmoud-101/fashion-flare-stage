@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { FASHION_AD_TEMPLATES } from "@/data/fashionAdTemplates";
 
 // ── Types ──
@@ -111,12 +112,8 @@ const CreatorStudio = () => {
     const analyze = async () => {
       setIsAnalyzingStyle(true);
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke("analyze-style", {
-          body: { images: styleImages, action: "style" },
-        });
-        if (fnErr) throw new Error(fnErr.message);
-        if (data?.error) throw new Error(data.error);
-        setStyleDescription(data.description || null);
+        const data = await callEdgeFunction("analyze-style", { images: styleImages, action: "style" });
+        setStyleDescription((data as Record<string, unknown>).description as string || null);
       } catch (err: unknown) {
         toast.error("فشل تحليل صورة الستايل");
       } finally {
@@ -190,20 +187,17 @@ Key requirements:
     try {
       const allImages = [...productImages, ...styleImages].map(i => ({ base64: i.base64, mimeType: i.mimeType }));
       
-      const { data, error: fnErr } = await supabase.functions.invoke("generate-campaign-images", {
-        body: { productImages: allImages, scenario: prompt, mood: "", customPrompt: "" },
+      const data = await callEdgeFunction("generate-campaign-images", {
+        productImages: allImages, scenario: prompt, mood: "", customPrompt: "",
       });
-
-      if (fnErr) throw new Error(fnErr.message);
-      if (data?.error) throw new Error(data.error);
-
-      const img = data?.imageUrl || data?.resultImage;
+      const d = data as Record<string, unknown>;
+      const img = d?.imageUrl || d?.resultImage;
       if (img) {
-        setGeneratedImage(img);
-        setHistory(prev => [{ image: img, prompt, timestamp: Date.now() }, ...prev].slice(0, 20));
+        setGeneratedImage(img as string);
+        setHistory(prev => [{ image: img as string, prompt, timestamp: Date.now() }, ...prev].slice(0, 20));
         toast.success("✨ تم توليد الصورة!");
-      } else if (data?.description) {
-        setError(data.description);
+      } else if (d?.description) {
+        setError(d.description as string);
       } else {
         throw new Error("لم يتم توليد صورة، حاول مرة أخرى");
       }
@@ -230,14 +224,10 @@ Key requirements:
       }
 
       const allImages = [{ base64: imageBase64, mimeType }];
-      const { data: editData, error: editFnErr } = await supabase.functions.invoke("generate-campaign-images", {
-        body: { productImages: allImages, scenario: editPrompt, mood: "", customPrompt: "" },
+      const editData = await callEdgeFunction("generate-campaign-images", {
+        productImages: allImages, scenario: editPrompt, mood: "", customPrompt: "",
       });
-
-      if (editFnErr) throw new Error(editFnErr.message);
-      if (editData?.error) throw new Error(editData.error);
-
-      const img = editData?.imageUrl || editData?.resultImage;
+      const img = (editData as Record<string, unknown>)?.imageUrl || (editData as Record<string, unknown>)?.resultImage;
       if (img) {
         setGeneratedImage(img);
         setHistory(prev => [{ image: img, prompt: `Edit: ${editPrompt}`, timestamp: Date.now() }, ...prev].slice(0, 20));
