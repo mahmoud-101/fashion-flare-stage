@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
-import { Menu, X, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Menu, X, Sparkles, LayoutDashboard } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { user } = useAuth();
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -12,10 +14,11 @@ const Navbar = () => {
   });
 
   const links = [
-    { label: "المميزات", href: "#features" },
-    { label: "كيف يعمل", href: "#how-it-works" },
-    { label: "الأسعار", href: "#pricing" },
-    { label: "الأسئلة الشائعة", href: "#faq" },
+    { label: "المميزات", href: "/#features" },
+    { label: "كيف يعمل", href: "/#how-it-works" },
+    { label: "الأسعار", href: "/#pricing" },
+    { label: "الأسئلة الشائعة", href: "/#faq" },
+    { label: "من نحن", href: "/about" },
   ];
 
   return (
@@ -37,7 +40,7 @@ const Navbar = () => {
             transition={{ type: "spring", stiffness: 300 }}
             className="w-9 h-9 rounded-xl btn-gold flex items-center justify-center"
           >
-            <Sparkles className="w-4.5 h-4.5" />
+            <Sparkles className="w-5 h-5" />
           </motion.div>
           <span className="text-xl font-black text-gradient-gold">Moda AI</span>
         </a>
@@ -61,17 +64,31 @@ const Navbar = () => {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <a href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            تسجيل دخول
-          </a>
-          <motion.a
-            href="/auth"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.97 }}
-            className="btn-gold px-6 py-2.5 rounded-xl text-sm font-bold inline-block"
-          >
-            جرّب مجاناً
-          </motion.a>
+          {user ? (
+            <motion.a
+              href="/dashboard"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.97 }}
+              className="btn-gold px-6 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              لوحة التحكم
+            </motion.a>
+          ) : (
+            <>
+              <a href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                تسجيل دخول
+              </a>
+              <motion.a
+                href="/auth"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.97 }}
+                className="btn-gold px-6 py-2.5 rounded-xl text-sm font-bold inline-block"
+              >
+                جرّب مجاناً
+              </motion.a>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -103,9 +120,16 @@ const Navbar = () => {
                 {l.label}
               </motion.a>
             ))}
-            <a href="/auth" className="btn-gold px-5 py-3 rounded-xl text-center mt-2 font-bold">
-              جرّب مجاناً — مجاني
-            </a>
+            {user ? (
+              <a href="/dashboard" className="btn-gold px-5 py-3 rounded-xl text-center mt-2 font-bold flex items-center justify-center gap-2">
+                <LayoutDashboard className="w-4 h-4" />
+                لوحة التحكم
+              </a>
+            ) : (
+              <a href="/auth" className="btn-gold px-5 py-3 rounded-xl text-center mt-2 font-bold">
+                جرّب مجاناً — مجاني
+              </a>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

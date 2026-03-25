@@ -132,7 +132,7 @@ export function MobileBottomNav() {
                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
                               active ? "bg-primary/20" : "bg-border/30"
                             }`}>
-                              <Icon className="w-4.5 h-4.5" />
+                              <Icon className="w-5 h-5" />
                             </div>
                             <span className="text-[10px] font-bold leading-tight text-center">
                               {item.title}

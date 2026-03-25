@@ -46,7 +46,7 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 rounded-xl btn-gold flex items-center justify-center">
-                <Sparkles className="w-4.5 h-4.5" />
+                <Sparkles className="w-5 h-5" />
               </div>
               <span className="text-xl font-black text-gradient-gold">Moda AI</span>
             </div>
@@ -55,7 +55,7 @@ const Footer = () => {
             </p>
             <div className="flex items-center gap-3">
               <motion.a
-                href="https://instagram.com"
+                href="https://instagram.com/moda.ai.eg"
                 target="_blank"
                 rel="noopener noreferrer"
                 whileHover={{ scale: 1.1, y: -2 }}
@@ -64,7 +64,7 @@ const Footer = () => {
                 <Instagram className="w-4 h-4 text-primary" />
               </motion.a>
               <motion.a
-                href="https://twitter.com"
+                href="https://twitter.com/modaai_eg"
                 target="_blank"
                 rel="noopener noreferrer"
                 whileHover={{ scale: 1.1, y: -2 }}
@@ -83,6 +83,7 @@ const Footer = () => {
               <li><a href="#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">الأسعار</a></li>
               <li><a href="#how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">كيف يعمل</a></li>
               <li><a href="#faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">الأسئلة الشائعة</a></li>
+              <li><a href="/about" className="text-sm text-muted-foreground hover:text-primary transition-colors">من نحن</a></li>
               <li><a href="/auth" className="text-sm text-muted-foreground hover:text-primary transition-colors">ابدأ مجاناً</a></li>
             </ul>
           </div>
@@ -93,11 +94,11 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4 text-primary shrink-0" />
-                hello@moda-ai.com
+                <a href="mailto:support@moda-ai.com" className="hover:text-primary transition-colors">support@moda-ai.com</a>
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary shrink-0" />
-                +20 100 000 0000
+                <a href="https://wa.me/201020876934" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">01020876934</a>
               </li>
             </ul>
             <div className="mt-6">
@@ -140,6 +141,9 @@ const Footer = () => {
             © {new Date().getFullYear()} Moda AI — جميع الحقوق محفوظة
           </p>
           <div className="flex items-center gap-6">
+            <a href="/about" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+              من نحن
+            </a>
             <a href="/privacy" className="text-xs text-muted-foreground hover:text-primary transition-colors">
               سياسة الخصوصية
             </a>

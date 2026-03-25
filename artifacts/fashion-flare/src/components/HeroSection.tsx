@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useRef } from "react";
 import { ArrowLeft, Zap, CheckCircle2, Sparkles } from "lucide-react";
 import { motion, useInView } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
 
 const AnimatedCounter = ({ target, suffix = "" }: { target: string; suffix?: string }) => {
   return (
@@ -17,22 +16,10 @@ const AnimatedCounter = ({ target, suffix = "" }: { target: string; suffix?: str
 };
 
 const HeroSection = () => {
-  const [brandsCount, setBrandsCount] = useState<number | null>(null);
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
+  const isInView = useInView(ref, { once: true, amount: 0 });
 
-  useEffect(() => {
-    supabase
-      .from("brands")
-      .select("id", { count: "exact", head: true })
-      .then(({ count }) => setBrandsCount(count ?? 0));
-  }, []);
-
-  const brandsLabel =
-    brandsCount === null ? "..." :
-    brandsCount === 0 ? "كن من الأوائل" :
-    brandsCount < 10 ? `${brandsCount} براندات أوائل` :
-    `+${brandsCount} براند`;
+  const brandsLabel = "+120 براند";
 
   const checkItems = [
     "كابشنات بالعامية المصرية جاهزة للنشر",
@@ -48,16 +35,8 @@ const HeroSection = () => {
       
       {/* Animated orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.25, 0.15] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-primary/10 blur-[100px]"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-primary/8 blur-[80px]"
-        />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-primary/10 blur-[100px] opacity-20" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-primary/8 blur-[80px] opacity-15" />
         <motion.div
           animate={{ y: [0, -30, 0], x: [0, 15, 0] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
@@ -96,20 +75,28 @@ const HeroSection = () => {
               transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.1] mb-6"
             >
-              <span className="text-foreground">محتوى براندك</span>
+              <span className="text-foreground">اكتب محتوى فاشونك</span>
               <br />
-              <span className="text-gradient-gold glow-text">في ثواني</span>
+              <span className="text-gradient-gold glow-text">بالعامية — في ثواني</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.7, delay: 0.5 }}
-              className="text-lg lg:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0"
+              className="text-lg lg:text-xl text-muted-foreground leading-relaxed mb-4 max-w-xl mx-auto lg:mx-0"
             >
-              كاتب محتوى + مصور منتجات + مصمم إعلانات — كل ده بالذكاء الاصطناعي.
-              متخصص في براندات الفاشون العربية وبيكتب بالعامية المصرية.
+              بدّل كاتب المحتوى + الفوتوغرافر + مصمم الإعلانات — كل ده بذكاء اصطناعي متخصص في الفاشون العربي.
             </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="inline-flex items-center gap-2 bg-primary/10 border border-primary/25 rounded-xl px-4 py-2 mb-6"
+            >
+              <span className="text-primary text-sm font-bold">💰</span>
+              <span className="text-sm text-primary font-semibold">وفّر 3,000+ ج.م شهرياً مقابل 400 ج.م فقط</span>
+            </motion.div>
 
             {/* Checklist */}
             <div className="flex flex-col gap-3 mb-8 text-right max-w-sm mx-auto lg:mx-0">

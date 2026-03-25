@@ -1,6 +1,7 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Hash, Copy, Check, RefreshCw, Sparkles, Tag, AlertTriangle } from "lucide-react";
+import { Hash, Copy, Check, RefreshCw, Sparkles, Tag, AlertTriangle, BookmarkPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { usePageTitle } from "@/components/AccessibilityHelpers";
@@ -48,6 +49,7 @@ const HashtagGenerator = () => {
   const [groups, setGroups] = useState<HashtagGroup[]>([]);
   const [copiedGroup, setCopiedGroup] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
 
   const handleGenerate = () => {
     if (!productType && !customKeyword) {
@@ -168,6 +170,24 @@ const HashtagGenerator = () => {
     setTimeout(() => setCopiedAll(false), 2000);
   };
 
+  const handleSaveToLibrary = async () => {
+    if (!user || groups.length === 0) return;
+    const allTags = groups.flatMap((g) => g.tags).join(" ");
+    const label = brandName || productType || customKeyword || "هاشتاجات";
+    const { error } = await supabase.from("saved_content").insert({
+      user_id: user.id,
+      title: `هاشتاجات ${label}`,
+      content: allTags,
+      content_type: "hashtags",
+      platform,
+      status: "draft",
+    });
+    if (error) { toast.error("حصل خطأ أثناء الحفظ"); return; }
+    setSavedToLibrary(true);
+    toast.success("تم الحفظ في مكتبتك! 📚");
+    setTimeout(() => setSavedToLibrary(false), 3000);
+  };
+
   const colorMap: Record<string, string> = {
     blue: "border-blue-400/30 bg-blue-400/5 text-blue-400",
     gold: "border-primary/30 bg-primary/5 text-primary",
@@ -187,8 +207,8 @@ const HashtagGenerator = () => {
   const totalTags = groups.flatMap((g) => g.tags).length;
 
   return (
-    <DashboardLayout>
-      <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <DashboardLayout title="مولّد الهاشتاجات" subtitle="هاشتاجات متخصصة في الفاشون العربي بالذكاء الاصطناعي">
+      <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-xl btn-gold flex items-center justify-center">
             <Hash className="w-5 h-5" />
@@ -307,15 +327,26 @@ const HashtagGenerator = () => {
                 <Tag className="w-4 h-4 text-primary" />
                 <span className="text-sm font-bold text-foreground">{totalTags} هاشتاج في {groups.length} مجموعات</span>
               </div>
-              <button
-                onClick={copyAll}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
-                  copiedAll ? "btn-gold border-transparent" : "glass-card gold-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {copiedAll ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedAll ? "تم النسخ!" : "نسخ الكل"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveToLibrary}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                    savedToLibrary ? "bg-green-500/20 border-green-500/40 text-green-400" : "glass-card gold-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {savedToLibrary ? <Check className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
+                  {savedToLibrary ? "تم الحفظ!" : "حفظ"}
+                </button>
+                <button
+                  onClick={copyAll}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                    copiedAll ? "btn-gold border-transparent" : "glass-card gold-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {copiedAll ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedAll ? "تم النسخ!" : "نسخ الكل"}
+                </button>
+              </div>
             </div>
 
             {groups.map((group) => (

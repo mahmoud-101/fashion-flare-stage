@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { callEdgeFunction } from "@/lib/callEdgeFunction";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ErrorCard } from "@/components/ErrorCard";
 import { LoadingAnnouncer, usePageTitle } from "@/components/AccessibilityHelpers";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
@@ -53,10 +53,11 @@ const DIALECTS = [
 const AIWriter = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { checkAndProceed, showUpgradeModal, setShowUpgradeModal, limitType, currentUsed, currentLimit } = useCanGenerate();
 
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(() => (location.state as { prefill?: string })?.prefill || "");
   const [targetMarket, setTargetMarket] = useState("egypt");
   const [dialect, setDialect] = useState("egyptian");
   const [productImages, setProductImages] = useState<ImageFile[]>([]);
@@ -171,37 +172,39 @@ const AIWriter = () => {
     const idx = ideas.findIndex((i) => i.id === ideaId);
     if (idx === -1) return;
 
-    setIdeas((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], isLoadingImage: true, imageError: null };
-      return next;
+    checkAndProceed("image_generation", async () => {
+      setIdeas((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], isLoadingImage: true, imageError: null };
+        return next;
+      });
+
+      try {
+        const data = await callEdgeFunction("generate-campaign-images", {
+          productImage: productImages[0] || null,
+          scenarios: [ideas[idx].scenario],
+          mood: "Minimal White",
+        });
+
+        const imageResult = (data as Record<string, unknown[]>)?.results?.[0] as Record<string, unknown> | undefined;
+        if (!imageResult?.image) throw new Error("فشل توليد الصورة");
+
+        setIdeas((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], image: imageResult.image as ImageFile, isLoadingImage: false };
+          return next;
+        });
+        toast.success("✨ تم توليد صورة البوست");
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : "فشل توليد الصورة";
+        setIdeas((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], isLoadingImage: false, imageError: errMsg };
+          return next;
+        });
+        toast.error(errMsg);
+      }
     });
-
-    try {
-      const data = await callEdgeFunction("generate-campaign-images", {
-        productImage: productImages[0] || null,
-        scenarios: [ideas[idx].scenario],
-        mood: "Minimal White",
-      });
-
-      const imageResult = (data as Record<string, unknown[]>)?.results?.[0] as Record<string, unknown> | undefined;
-      if (!imageResult?.image) throw new Error("فشل توليد الصورة");
-
-      setIdeas((prev) => {
-        const next = [...prev];
-        next[idx] = { ...next[idx], image: imageResult.image, isLoadingImage: false };
-        return next;
-      });
-      toast.success("✨ تم توليد صورة البوست");
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : "فشل توليد الصورة";
-      setIdeas((prev) => {
-        const next = [...prev];
-        next[idx] = { ...next[idx], isLoadingImage: false, imageError: errMsg };
-        return next;
-      });
-      toast.error(errMsg);
-    }
   };
 
   const updateIdea = (id: string, field: keyof PlanIdea, value: string) => {

@@ -8,20 +8,21 @@ interface SearchItem {
   url: string;
   icon: React.ElementType;
   keywords: string[];
+  comingSoon?: boolean;
 }
 
 const searchItems: SearchItem[] = [
   { title: "الرئيسية", description: "لوحة التحكم الرئيسية", url: "/dashboard", icon: LayoutDashboard, keywords: ["home", "dashboard", "رئيسية"] },
   { title: "مولّد الإعلانات", description: "إعلانات احترافية بالذكاء الاصطناعي", url: "/dashboard/ad-generator", icon: Wand2, keywords: ["ad", "إعلان", "creative"] },
   { title: "تجسس المنافسين", description: "حلل إعلانات منافسيك", url: "/dashboard/competitor-spy", icon: Eye, keywords: ["competitor", "spy", "منافس", "تحليل"] },
-  { title: "A/B اختبار", description: "قارن نسخ الإعلانات", url: "/dashboard/ab-testing", icon: FlaskConical, keywords: ["test", "اختبار", "مقارنة"] },
+  { title: "مقارنة الإعلانات", description: "ولّد 4 نسخ لإعلانك وقارن الأداء المتوقع", url: "/dashboard/ab-testing", icon: FlaskConical, keywords: ["test", "اختبار", "مقارنة", "ab", "إعلان"] },
   { title: "كاتب المحتوى", description: "كابشن وإعلانات وستوريز", url: "/dashboard/writer", icon: Pen, keywords: ["writer", "كاتب", "محتوى", "caption"] },
   { title: "مكتبة المحتوى", description: "كل المحتوى المحفوظ", url: "/dashboard/library", icon: Library, keywords: ["library", "مكتبة", "محفوظ"] },
   { title: "استوديو المصمم", description: "أدوات التصميم المتقدمة", url: "/dashboard/creator", icon: Sparkles, keywords: ["creator", "مصمم", "تصميم"] },
   { title: "استوديو التصوير", description: "تصوير منتجات AI", url: "/dashboard/photoshoot", icon: Camera, keywords: ["photo", "تصوير", "منتج"] },
   { title: "استوديو التعديل", description: "تعديل وريتاتش بالـ AI", url: "/dashboard/edit-studio", icon: Edit3, keywords: ["edit", "تعديل", "retouch"] },
   { title: "استوديو الصور", description: "حذف خلفية وتأثيرات", url: "/dashboard/studio", icon: Image, keywords: ["image", "صور", "خلفية"] },
-  { title: "صانع الريلز", description: "سكريبتات ريلز احترافية", url: "/dashboard/reels", icon: Video, keywords: ["reel", "ريلز", "فيديو"] },
+  { title: "صانع الريلز", description: "سكريبتات ريلز احترافية", url: "/dashboard/reels", icon: Video, keywords: ["reel", "ريلز", "فيديو"], comingSoon: true },
   { title: "المخطط والجدولة", description: "جدولة المنشورات", url: "/dashboard/scheduler", icon: Calendar, keywords: ["schedule", "جدولة", "مخطط"] },
   { title: "التحليلات", description: "إحصائيات الاستخدام", url: "/dashboard/analytics", icon: BarChart3, keywords: ["analytics", "تحليلات", "إحصائيات"] },
   { title: "ربط المتجر", description: "Shopify / Salla / Zid", url: "/dashboard/store", icon: ShoppingBag, keywords: ["store", "متجر", "salla", "shopify"] },
@@ -108,14 +109,22 @@ export function GlobalSearch() {
               return (
                 <button
                   key={item.url}
-                  onClick={() => handleSelect(item.url)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-right hover:bg-primary/10 transition-colors"
+                  onClick={() => !item.comingSoon && handleSelect(item.url)}
+                  disabled={item.comingSoon}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-right transition-colors ${
+                    item.comingSoon ? "opacity-50 cursor-not-allowed" : "hover:bg-primary/10"
+                  }`}
                 >
-                  <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                    <Icon className="w-4 h-4 text-primary" />
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.comingSoon ? "bg-border/30" : "bg-primary/15"}`}>
+                    <Icon className={`w-4 h-4 ${item.comingSoon ? "text-muted-foreground" : "text-primary"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-foreground">{item.title}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-foreground">{item.title}</span>
+                      {item.comingSoon && (
+                        <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-bold">قريباً</span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground truncate">{item.description}</div>
                   </div>
                 </button>

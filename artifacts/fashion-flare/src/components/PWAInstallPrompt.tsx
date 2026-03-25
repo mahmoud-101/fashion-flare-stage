@@ -8,7 +8,9 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem("moda_pwa_dismissed") === "1"
+  );
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -19,6 +21,11 @@ export function PWAInstallPrompt() {
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
+
+  const handleDismiss = () => {
+    localStorage.setItem("moda_pwa_dismissed", "1");
+    setDismissed(true);
+  };
 
   if (!deferredPrompt || dismissed) return null;
 
@@ -46,14 +53,14 @@ export function PWAInstallPrompt() {
               تثبيت
             </button>
             <button
-              onClick={() => setDismissed(true)}
+              onClick={handleDismiss}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               لاحقاً
             </button>
           </div>
         </div>
-        <button onClick={() => setDismissed(true)} className="text-muted-foreground hover:text-foreground">
+        <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
           <X className="w-4 h-4" />
         </button>
       </div>

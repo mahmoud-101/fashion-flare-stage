@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Settings, User, Bell, Shield, Trash2, Upload, Loader2, Check, Camera } from "lucide-react";
+import { Settings, User, Bell, Shield, Trash2, Upload, Loader2, Check, Camera, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageTitle } from "@/components/AccessibilityHelpers";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,13 @@ const SettingsPage = () => {
 
   // Notifications
   const [notifications, setNotifications] = useState(true);
+
+  // Delete account
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const isGoogleUser = user?.app_metadata?.provider === "google" ||
+    (user?.app_metadata?.providers as string[] | undefined)?.includes("google");
 
   // Profile data
   const { data: profile } = useQuery({
@@ -117,6 +124,21 @@ const SettingsPage = () => {
       toast.error("حصل خطأ أثناء تغيير كلمة السر");
     }
     setChangingPassword(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setDeletingAccount(true);
+    try {
+      await supabase.from("saved_content").delete().eq("user_id", user.id);
+      await supabase.from("profiles").delete().eq("user_id", user.id);
+      await supabase.auth.signOut();
+      toast.success("تم حذف حسابك بنجاح");
+    } catch {
+      toast.error("حصل خطأ أثناء حذف الحساب");
+    }
+    setDeletingAccount(false);
+    setConfirmDelete(false);
   };
 
   const avatarUrl = profile?.avatar_url;
@@ -218,42 +240,44 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Security */}
-        <div className="glass-card gold-border rounded-2xl p-6">
-          <h2 className="text-sm font-black text-foreground mb-5 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" /> تغيير كلمة السر
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-foreground mb-2 block">كلمة السر الجديدة</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="أدخل كلمة سر جديدة (6 أحرف على الأقل)"
-                className="w-full bg-surface-2 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors"
-              />
+        {/* Security — only for email/password users */}
+        {!isGoogleUser && (
+          <div className="glass-card gold-border rounded-2xl p-6">
+            <h2 className="text-sm font-black text-foreground mb-5 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-primary" /> تغيير كلمة السر
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-foreground mb-2 block">كلمة السر الجديدة</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="أدخل كلمة سر جديدة (6 أحرف على الأقل)"
+                  className="w-full bg-surface-2 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-foreground mb-2 block">تأكيد كلمة السر</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="أعد كتابة كلمة السر"
+                  className="w-full bg-surface-2 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors"
+                />
+              </div>
+              <button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !newPassword}
+                className="btn-gold px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                تغيير كلمة السر
+              </button>
             </div>
-            <div>
-              <label className="text-xs font-bold text-foreground mb-2 block">تأكيد كلمة السر</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="أعد كتابة كلمة السر"
-                className="w-full bg-surface-2 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors"
-              />
-            </div>
-            <button
-              onClick={handleChangePassword}
-              disabled={changingPassword || !newPassword}
-              className="btn-gold px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-              تغيير كلمة السر
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Danger zone */}
         <div className="glass-card rounded-2xl p-6 border border-destructive/20">
@@ -261,9 +285,39 @@ const SettingsPage = () => {
             <Trash2 className="w-4 h-4" /> منطقة الخطر
           </h2>
           <p className="text-xs text-muted-foreground mb-3">حذف الحساب نهائياً — هذا الإجراء لا يمكن التراجع عنه</p>
-          <button className="glass-card border border-destructive/30 px-4 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
-            حذف الحساب
-          </button>
+
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="glass-card border border-destructive/30 px-4 py-2.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" /> حذف الحساب
+            </button>
+          ) : (
+            <div className="glass-card border border-destructive/40 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                <span className="text-sm font-bold">هل أنت متأكد؟ هذا الإجراء لا يمكن التراجع عنه</span>
+              </div>
+              <p className="text-xs text-muted-foreground">سيتم حذف حسابك وكل المحتوى المحفوظ نهائياً</p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  className="bg-destructive text-destructive-foreground px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-destructive/90 transition-colors disabled:opacity-60"
+                >
+                  {deletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  نعم، احذف حسابي
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

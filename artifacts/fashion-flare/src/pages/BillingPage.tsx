@@ -4,7 +4,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import {
   CreditCard, Check, Zap, Crown, Building2, Smartphone,
   Wallet, MessageCircle, Copy, CheckCircle2, ArrowLeft,
-  X, ChevronRight, AlertCircle, Shield, Zap as ZapIcon, Ban, HeadphonesIcon, CalendarCheck
+  X, ChevronRight, AlertCircle, Shield, Zap as ZapIcon, Ban, HeadphonesIcon, CalendarCheck, Phone
 } from "lucide-react";
 import { usePageTitle } from "@/components/AccessibilityHelpers";
 import { supabase } from "@/integrations/supabase/client";
@@ -172,10 +172,10 @@ const BillingPage = () => {
                 </div>
                 {currentPlanName === "free" ? (
                   <div className="text-xs text-muted-foreground">مجاني دائماً — لا فواتير</div>
-                ) : subscription?.ends_at ? (
+                ) : subscription?.current_period_end ? (
                   <div className="flex items-center gap-1.5 text-xs text-green-400">
                     <CalendarCheck className="w-3.5 h-3.5" />
-                    <span>تجديد في {new Date(subscription.ends_at).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" })}</span>
+                    <span>تجديد في {new Date(subscription.current_period_end).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" })}</span>
                   </div>
                 ) : null}
               </div>
@@ -283,6 +283,27 @@ const BillingPage = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* Guarantee */}
+        <div className="glass-card rounded-2xl border border-primary/20 bg-primary/4 p-6 flex flex-col sm:flex-row items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl btn-gold flex items-center justify-center shrink-0">
+            <Shield className="w-8 h-8" />
+          </div>
+          <div className="flex-1 text-center sm:text-right">
+            <h3 className="font-black text-foreground text-lg mb-1">ضمان رضاكم 100%</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              لو في خلال 7 أيام من الاشتراك مش راضٍ — راسلنا على واتساب وهنرجعلك كامل المبلغ بدون أي أسئلة. ثقتنا في المنتج وفي وقتك.
+            </p>
+          </div>
+          <a
+            href="https://wa.me/201020876934?text=أريد استرداد مبلغ الاشتراك"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="glass-card gold-border px-5 py-2.5 rounded-xl text-sm font-bold text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+          >
+            تواصل معنا
+          </a>
         </div>
 
         {/* How payment works */}
@@ -521,7 +542,7 @@ const BillingPage = () => {
                     <div className="flex items-start gap-3 bg-primary/8 border border-primary/20 rounded-xl px-4 py-3 text-right mb-6">
                       <Phone className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                       <p className="text-xs text-primary/80">
-                        لو ما اتفتحش واتساب تلقائياً — راسلنا مباشرة على <strong>0100-0000-000</strong> مع بيانات الدفع.
+                        لو ما اتفتحش واتساب تلقائياً — راسلنا مباشرة على <strong>01020876934</strong> مع بيانات الدفع.
                       </p>
                     </div>
                     <button onClick={resetPayment} className="btn-gold w-full py-3 rounded-xl font-bold">

@@ -227,7 +227,7 @@ Key requirements:
       const editData = await callEdgeFunction("generate-campaign-images", {
         productImages: allImages, scenario: editPrompt, mood: "", customPrompt: "",
       });
-      const img = (editData as Record<string, unknown>)?.imageUrl || (editData as Record<string, unknown>)?.resultImage;
+      const img = ((editData as Record<string, unknown>)?.imageUrl || (editData as Record<string, unknown>)?.resultImage) as string | null;
       if (img) {
         setGeneratedImage(img);
         setHistory(prev => [{ image: img, prompt: `Edit: ${editPrompt}`, timestamp: Date.now() }, ...prev].slice(0, 20));

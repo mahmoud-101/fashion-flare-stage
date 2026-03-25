@@ -7,9 +7,9 @@ const rows = [
   { feature: "يفهم اللهجات العربية", moda: true, agency: "أحياناً", others: false },
   { feature: "توليد صور المنتجات", moda: true, agency: true, others: false },
   { feature: "A/B Testing للإعلانات", moda: true, agency: true, others: false },
-  { feature: "Brand Bible تلقائي", moda: true, agency: "مدفوع إضافي", others: false },
-  { feature: "ربط سلة", moda: true, agency: false, others: false },
-  { feature: "جدولة تلقائية للمنشورات", moda: true, agency: false, others: "محدود" },
+  { feature: "إعدادات هوية البراند التلقائية", moda: true, agency: "مدفوع إضافي", others: false },
+  { feature: "ربط سلة و Shopify و Zid", moda: true, agency: false, others: false },
+  { feature: "تقويم جدولة المحتوى", moda: true, agency: false, others: "محدود" },
   { feature: "التكلفة الشهرية", moda: "من 0 ج.م", agency: "5,000+ ج.م", others: "غير متخصص" },
   { feature: "وقت تسليم المحتوى", moda: "ثوانٍ", agency: "أيام", others: "ساعات" },
 ];

@@ -27,7 +27,7 @@ const quickTools = [
   { title: "كاتب المحتوى", desc: "كابشن، إعلان، ستوري", icon: Pen, url: "/dashboard/writer", badge: "الأسرع" },
   { title: "تجسس المنافسين", desc: "حلل إعلانات منافسيك", icon: Eye, url: "/dashboard/competitor-spy", badge: "جديد" },
   { title: "A/B اختبار", desc: "قارن نسخ الإعلانات", icon: FlaskConical, url: "/dashboard/ab-testing", badge: null },
-  { title: "استوديو الصور", desc: "حذف خلفية + موديلات", icon: Image, url: "/dashboard/studio", badge: null },
+  { title: "است��ديو الصور", desc: "حذف خلفية + موديلات", icon: Image, url: "/dashboard/studio", badge: null },
   { title: "صانع الريلز", desc: "سكريبتات ريلز احترافية", icon: Video, url: "/dashboard/reels", badge: null },
   { title: "المخطط", desc: "جدولة كل منصاتك", icon: Calendar, url: "/dashboard/scheduler", badge: null },
   { title: "ربط المتجر", desc: "Shopify / Salla / Zid", icon: ShoppingBag, url: "/dashboard/store", badge: null },
@@ -56,22 +56,31 @@ const Dashboard = () => {
     if (!user) return;
 
     const fetchData = async () => {
-      // Fetch all content for stats
+      // Fetch recent content (limited) for display
       const { data: content } = await supabase
         .from("saved_content")
         .select("id, title, content_type, platform, status, created_at")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(4);
 
-      if (content) {
-        setStats({
-          totalContent: content.length,
-          publishedContent: content.filter(c => c.status === "published").length,
-          scheduledContent: content.filter(c => c.status === "scheduled").length,
-          draftContent: content.filter(c => c.status === "draft").length,
-        });
-        setRecentContent(content.slice(0, 4));
-      }
+      if (content) setRecentContent(content);
+
+      // Fetch counts per status using individual count queries
+      const [{ count: total }, { count: published }, { count: scheduled }, { count: draft }] =
+        await Promise.all([
+          supabase.from("saved_content").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("saved_content").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "published"),
+          supabase.from("saved_content").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "scheduled"),
+          supabase.from("saved_content").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "draft"),
+        ]);
+
+      setStats({
+        totalContent: total ?? 0,
+        publishedContent: published ?? 0,
+        scheduledContent: scheduled ?? 0,
+        draftContent: draft ?? 0,
+      });
 
       // Fetch brand
       const { data: brand } = await supabase

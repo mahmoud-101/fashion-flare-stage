@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { callEdgeFunction } from "@/lib/callEdgeFunction";
+import { useCanGenerate } from "@/hooks/useCanGenerate";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { FASHION_AD_TEMPLATES, type FashionAdTemplate } from "@/data/fashionAdTemplates";
 
 // ── Types ──
@@ -44,6 +46,7 @@ const BACKGROUNDS = [
 ];
 
 const PhotoshootPage = () => {
+  const { checkAndProceed, showUpgradeModal, setShowUpgradeModal, limitType, currentUsed, currentLimit } = useCanGenerate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [productImages, setProductImages] = useState<ImageFile[]>([]);
   const [selectedShots, setSelectedShots] = useState<number[]>([0, 1, 2]);
@@ -90,10 +93,11 @@ const PhotoshootPage = () => {
   };
 
   // ── Generate ──
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (productImages.length === 0) return toast.error("ارفع صورة منتج واحدة على الأقل");
     if (selectedShots.length === 0) return toast.error("اختر نوع لقطة واحد على الأقل");
 
+    checkAndProceed("image_generation", async () => {
     setIsGenerating(true);
     const shots = selectedShots.map(i => SHOT_STYLES[i]);
     setResults(shots.map(s => ({ label: s.label, image: null, isLoading: true, error: null })));
@@ -113,7 +117,7 @@ const PhotoshootPage = () => {
           customPrompt: selectedTemplate?.styling || "",
         });
 
-        const img = (data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null;
+        const img = ((data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null) as string | null;
         setResults(prev => {
           const next = [...prev];
           next[idx] = { ...next[idx], image: img, isLoading: false };
@@ -132,6 +136,7 @@ const PhotoshootPage = () => {
     await Promise.all(promises);
     setIsGenerating(false);
     toast.success("✨ تم توليد جلسة التصوير!");
+    }); // end checkAndProceed
   };
 
   const handleDownload = (image: string, label: string) => {
@@ -164,7 +169,7 @@ const PhotoshootPage = () => {
         productImages: images, scenario, mood: selectedTemplate?.mood || "", customPrompt: selectedTemplate?.styling || "",
       });
 
-      const img = (data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null;
+      const img = ((data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null) as string | null;
       setResults(prev => {
         const next = [...prev];
         next[idx] = { ...next[idx], image: img, isLoading: false };
@@ -375,6 +380,13 @@ const PhotoshootPage = () => {
           </div>
         )}
       </div>
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        limitType={limitType}
+        currentUsed={currentUsed}
+        currentLimit={currentLimit}
+      />
     </DashboardLayout>
   );
 };
