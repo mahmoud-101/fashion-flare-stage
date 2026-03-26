@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown } from "lucide-react";
+import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown, Flame, Sparkles } from "lucide-react";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { useSubscription } from "@/hooks/useSubscription";
 
@@ -46,6 +46,8 @@ const statusLabel: Record<string, string> = {
   draft: "مسودة",
 };
 
+type WeekDay = { day: string; count: number; isToday: boolean };
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { isExpiringSoon, daysLeft, plan } = useSubscription();
@@ -53,6 +55,9 @@ const Dashboard = () => {
   const [recentContent, setRecentContent] = useState<RecentItem[]>([]);
   const [brandName, setBrandName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [weekDays, setWeekDays] = useState<WeekDay[]>([]);
+  const [weekTotal, setWeekTotal] = useState(0);
+  const [createdToday, setCreatedToday] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -92,6 +97,37 @@ const Dashboard = () => {
         .maybeSingle();
 
       if (brand) setBrandName(brand.name);
+
+      // Streak: last 7 days activity
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      const { data: weekContent } = await supabase
+        .from("saved_content")
+        .select("created_at")
+        .eq("user_id", user.id)
+        .gte("created_at", sevenDaysAgo.toISOString());
+
+      if (weekContent) {
+        const arabicDays = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
+        const days: WeekDay[] = [];
+        let total = 0;
+        const todayStr = new Date().toISOString().split("T")[0];
+        let hasToday = false;
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dayStr = d.toISOString().split("T")[0];
+          const count = weekContent.filter(c => c.created_at.startsWith(dayStr)).length;
+          const isToday = dayStr === todayStr;
+          if (isToday && count > 0) hasToday = true;
+          total += count;
+          days.push({ day: arabicDays[d.getDay()], count, isToday });
+        }
+        setWeekDays(days);
+        setWeekTotal(total);
+        setCreatedToday(hasToday);
+      }
 
       setLoading(false);
     };
@@ -167,6 +203,65 @@ const Dashboard = () => {
           );
         })}
       </div>
+
+      {/* Streak Widget */}
+      {!loading && (
+        <div className="mb-6 glass-card gold-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {weekTotal > 0 ? (
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                <Flame className="w-5 h-5 text-amber-400" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+            )}
+            <div>
+              {weekTotal > 0 ? (
+                <>
+                  <div className="text-sm font-bold text-foreground">
+                    أنشأت <span className="text-amber-400">{weekTotal} قطعة</span> هذا الأسبوع 🔥
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {createdToday ? "رائع! أنشأت محتوى اليوم ✅" : "ابدأ يومك بقطعة محتوى جديدة ✨"}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-bold text-foreground">ابدأ يومك بقطعة محتوى جديدة ✨</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">لم تنشئ محتوى هذا الأسبوع بعد</div>
+                </>
+              )}
+            </div>
+          </div>
+          {/* Mini 7-bar chart */}
+          <div className="flex items-end gap-1 h-10 shrink-0">
+            {weekDays.map((d, i) => {
+              const maxCount = Math.max(...weekDays.map(w => w.count), 1);
+              const pct = Math.max((d.count / maxCount) * 100, 8);
+              return (
+                <div key={i} className="flex flex-col items-center gap-0.5 w-6">
+                  <div
+                    className={`w-full rounded-t transition-all duration-500 ${
+                      d.isToday
+                        ? "bg-amber-400"
+                        : d.count > 0
+                        ? "bg-primary/70"
+                        : "bg-surface-2"
+                    }`}
+                    style={{ height: `${pct}%` }}
+                    title={`${d.day}: ${d.count}`}
+                  />
+                  <span className={`text-[9px] leading-none ${d.isToday ? "text-amber-400 font-bold" : "text-muted-foreground/50"}`}>
+                    {d.day.charAt(0)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Quick tools */}
