@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical } from "lucide-react";
+import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown } from "lucide-react";
 import { WelcomeModal } from "@/components/WelcomeModal";
+import { useSubscription } from "@/hooks/useSubscription";
 
 interface Stats {
   totalContent: number;
@@ -47,6 +48,7 @@ const statusLabel: Record<string, string> = {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { isExpiringSoon, daysLeft, plan } = useSubscription();
   const [stats, setStats] = useState<Stats>({ totalContent: 0, publishedContent: 0, scheduledContent: 0, draftContent: 0 });
   const [recentContent, setRecentContent] = useState<RecentItem[]>([]);
   const [brandName, setBrandName] = useState<string | null>(null);
@@ -108,6 +110,43 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout title="لوحة التحكم" subtitle={`أهلاً بيك، ${greeting}! 👋`}>
+
+      {/* Subscription Expiry Warning Banner */}
+      {isExpiringSoon && (
+        <div className="mb-5 flex items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="text-sm text-amber-300 font-medium">
+              اشتراكك ينتهي بعد {daysLeft} {daysLeft === 1 ? "يوم" : "أيام"}
+            </span>
+          </div>
+          <Link
+            to="/dashboard/billing"
+            className="text-xs font-bold text-amber-400 hover:text-amber-300 underline shrink-0"
+          >
+            جدّد الآن
+          </Link>
+        </div>
+      )}
+
+      {/* Upgrade Banner for Free users */}
+      {plan === "free" && !isExpiringSoon && (
+        <div className="mb-5 flex items-center justify-between gap-3 bg-primary/8 border border-primary/20 rounded-2xl px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Crown className="w-4 h-4 text-primary shrink-0" />
+            <span className="text-sm text-foreground/80">
+              أنت على الخطة المجانية — <span className="text-primary font-medium">3 توليدات فقط يومياً</span>
+            </span>
+          </div>
+          <Link
+            to="/dashboard/billing"
+            className="text-xs font-bold btn-gold px-3 py-1.5 rounded-lg shrink-0"
+          >
+            رقّي للاحترافي
+          </Link>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statsDisplay.map((stat, i) => {
