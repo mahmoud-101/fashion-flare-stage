@@ -16,6 +16,7 @@ import { LoadingAnnouncer, usePageTitle } from "@/components/AccessibilityHelper
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import type { EdgeFunctionError } from "@/hooks/useEdgeFunction";
+import { FirstVisitHint } from "@/components/FirstVisitHint";
 
 interface ImageFile {
   base64: string;
@@ -644,6 +645,11 @@ const AIWriter = () => {
         limitType={limitType}
         currentUsed={currentUsed}
         currentLimit={currentLimit}
+      />
+      <FirstVisitHint
+        hintKey="aiwriter_image_tip"
+        message="💡 ارفع صورة المنتج للحصول على كابشنات أدق وأكثر تخصيصاً لبراندك"
+        position="bottom"
       />
     </DashboardLayout>
   );

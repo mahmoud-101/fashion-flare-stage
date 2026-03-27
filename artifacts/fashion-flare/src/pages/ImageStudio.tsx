@@ -19,6 +19,7 @@ import AdScoreCard from "@/components/studio/AdScoreCard";
 import BatchVariations from "@/components/studio/BatchVariations";
 import { useCanGenerate } from "@/hooks/useCanGenerate";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { FirstVisitHint } from "@/components/FirstVisitHint";
 
 // ── Auto Scenarios ──
 const AUTO_SCENARIOS = [
@@ -598,6 +599,11 @@ const ImageStudio = () => {
         limitType={limitType}
         currentUsed={currentUsed}
         currentLimit={currentLimit}
+      />
+      <FirstVisitHint
+        hintKey="studio_bg_tip"
+        message="💡 جرّب 'إزالة الخلفية' على صورة منتجك وضع خلفية احترافية في ثواني"
+        position="bottom"
       />
     </DashboardLayout>
   );

@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown, Flame, Sparkles } from "lucide-react";
+import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown, Flame, Sparkles, CheckCircle2, Circle } from "lucide-react";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useOnboarding } from "@/hooks/useOnboarding";
 
 interface Stats {
   totalContent: number;
@@ -51,6 +52,7 @@ type WeekDay = { day: string; count: number; isToday: boolean };
 const Dashboard = () => {
   const { user } = useAuth();
   const { isExpiringSoon, daysLeft, plan } = useSubscription();
+  const onboarding = useOnboarding();
   const [stats, setStats] = useState<Stats>({ totalContent: 0, publishedContent: 0, scheduledContent: 0, draftContent: 0 });
   const [recentContent, setRecentContent] = useState<RecentItem[]>([]);
   const [brandName, setBrandName] = useState<string | null>(null);
@@ -335,17 +337,45 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Brand setup CTA */}
-          {!loading && !brandName && (
+          {/* Setup Progress Widget */}
+          {!loading && !onboarding.isComplete && (
             <div className="mt-4 glass-card gold-border rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold text-foreground">أكمل إعداد البراند</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-bold text-foreground">أكمل إعداد براندك</span>
+                </div>
+                <span className="text-xs text-primary font-bold">{onboarding.progress}%</span>
               </div>
-              <p className="text-xs text-muted-foreground mb-2">حدد هوية براندك عشان الـ AI يكتب بأسلوبك</p>
-              <Link to="/dashboard/brand" className="text-xs text-primary hover:underline">
-                إعداد البراند ←
-              </Link>
+              <div className="w-full bg-border/30 rounded-full h-1.5 mb-4">
+                <div
+                  className="h-1.5 rounded-full bg-gradient-to-r from-primary to-yellow-400 transition-all duration-500"
+                  style={{ width: `${onboarding.progress}%` }}
+                />
+              </div>
+              <div className="space-y-2">
+                {onboarding.steps.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3">
+                    {s.done ? (
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                    )}
+                    {!s.done && s.link ? (
+                      <Link
+                        to={s.link}
+                        className="text-xs text-primary hover:underline font-medium"
+                      >
+                        {s.label} ←
+                      </Link>
+                    ) : (
+                      <span className={`text-xs ${s.done ? "text-foreground line-through" : "text-muted-foreground"}`}>
+                        {s.label}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

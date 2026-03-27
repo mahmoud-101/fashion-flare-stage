@@ -1,46 +1,88 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
-  Sparkles, ArrowLeft, ArrowRight, Check, Loader2,
-  Store, Pen, Target, Palette,
+  Sparkles, ArrowLeft, ArrowRight, Check, Loader2, Copy,
 } from "lucide-react";
 
 const ONBOARDING_KEY = "moda_onboarding_done";
+const TOTAL_STEPS = 5;
 
-const dialects = [
-  { value: "مصري 🇪🇬", label: "مصري", emoji: "🇪🇬" },
-  { value: "سعودي 🇸🇦", label: "سعودي", emoji: "🇸🇦" },
-  { value: "إماراتي 🇦🇪", label: "إماراتي", emoji: "🇦🇪" },
-  { value: "فصحى", label: "فصحى", emoji: "📖" },
+const DIALECTS = [
+  { value: "مصري", emoji: "🇪🇬" },
+  { value: "سعودي", emoji: "🇸🇦" },
+  { value: "إماراتي", emoji: "🇦🇪" },
+  { value: "فصحى", emoji: "📖" },
 ];
 
-const tones = [
-  { value: "أنيق ومميز", label: "أنيق ومميز", emoji: "✨" },
-  { value: "شبابي ومرح", label: "شبابي ومرح", emoji: "🔥" },
-  { value: "فاخر وراقي", label: "فاخر وراقي", emoji: "💎" },
-  { value: "كاجوال وعفوي", label: "كاجوال وعفوي", emoji: "😎" },
-  { value: "احترافي وموثوق", label: "احترافي وموثوق", emoji: "💼" },
+const PRODUCT_CATEGORIES = [
+  { value: "women", label: "ملابس نسائي", emoji: "👗" },
+  { value: "men", label: "ملابس رجالي", emoji: "👔" },
+  { value: "kids", label: "ملابس أطفال", emoji: "🧒" },
+  { value: "accessories", label: "أكسسوارات", emoji: "👜" },
+  { value: "mixed", label: "متنوع", emoji: "🌟" },
 ];
 
-const audiences = [
-  { value: "بنات 18-25", label: "بنات 18-25", emoji: "👩‍🎓" },
-  { value: "بنات 25-35", label: "بنات 25-35", emoji: "👩‍💼" },
-  { value: "ستات 35-50", label: "ستات 35-50", emoji: "👑" },
-  { value: "رجال فاشون", label: "رجال فاشون", emoji: "👔" },
-  { value: "الكل", label: "الجميع", emoji: "🌟" },
+const PLATFORMS = [
+  { value: "instagram", label: "Instagram", emoji: "📸" },
+  { value: "tiktok", label: "TikTok", emoji: "🎵" },
+  { value: "facebook", label: "Facebook", emoji: "📘" },
+  { value: "salla", label: "Salla", emoji: "🛒" },
+  { value: "shopify", label: "Shopify", emoji: "🏪" },
+  { value: "zid", label: "Zid", emoji: "🛍️" },
 ];
-
-const TOTAL_STEPS = 4;
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
   center: { x: 0, opacity: 1 },
   exit: (dir: number) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
 };
+
+function ConfettiPiece({ style }: { style: React.CSSProperties }) {
+  return (
+    <motion.div
+      className="absolute w-2 h-2 rounded-sm"
+      style={style}
+      initial={{ y: -20, opacity: 1, rotate: 0 }}
+      animate={{
+        y: 300,
+        opacity: 0,
+        rotate: Math.random() * 360,
+        x: (Math.random() - 0.5) * 200,
+      }}
+      transition={{ duration: 2 + Math.random() * 1, ease: "easeIn" }}
+    />
+  );
+}
+
+function Confetti() {
+  const colors = ["#d6af36", "#f0d060", "#4ade80", "#60a5fa", "#f472b6", "#a78bfa"];
+  const pieces = Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    color: colors[i % colors.length],
+    left: `${Math.random() * 100}%`,
+    delay: Math.random() * 0.5,
+  }));
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {pieces.map((p) => (
+        <ConfettiPiece
+          key={p.id}
+          style={{
+            backgroundColor: p.color,
+            left: p.left,
+            top: 0,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function WelcomeModal() {
   const { user } = useAuth();
@@ -50,11 +92,18 @@ export function WelcomeModal() {
   const [dir, setDir] = useState(1);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [confetti, setConfetti] = useState(false);
 
   const [brandName, setBrandName] = useState("");
-  const [dialect, setDialect] = useState("مصري 🇪🇬");
-  const [tone, setTone] = useState("أنيق ومميز");
-  const [audience, setAudience] = useState("بنات 18-25");
+  const [dialect, setDialect] = useState("مصري");
+  const [productCategory, setProductCategory] = useState("women");
+  const [platforms, setPlatforms] = useState<string[]>(["instagram"]);
+
+  const [demoProduct, setDemoProduct] = useState("");
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoCaptions, setDemoCaptions] = useState<string[]>([]);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -68,7 +117,7 @@ export function WelcomeModal() {
       .maybeSingle()
       .then(({ data }) => {
         setChecking(false);
-        if (!data || !data.name) setOpen(true);
+        if (!data?.name) setOpen(true);
         else localStorage.setItem(ONBOARDING_KEY + "_" + user.id, "1");
       });
   }, [user]);
@@ -78,82 +127,131 @@ export function WelcomeModal() {
     setStep(next);
   };
 
+  const togglePlatform = (p: string) => {
+    setPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  };
+
+  const generateDemo = async () => {
+    if (!demoProduct.trim()) return;
+    setDemoLoading(true);
+    setDemoError(null);
+    setDemoCaptions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke("public-demo-generate", {
+        body: {
+          product: demoProduct.trim(),
+          description: `براند ${brandName || "فاشون"} — ${dialect}`,
+          platform: platforms[0] || "instagram",
+        },
+      });
+      if (error) throw error;
+      if (data?.captions) setDemoCaptions(data.captions);
+      else setDemoError("لم تُولَّد نتائج، جرّب مرة أخرى");
+    } catch {
+      setDemoError("حصل خطأ. جرّب مرة أخرى.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   const finish = async () => {
     if (!user || !brandName.trim()) return;
     setSaving(true);
-    const payload = {
-      user_id: user.id,
-      name: brandName.trim(),
-      dialect,
-      tone,
-      target_audience: audience,
-    };
+
     const { data: existing } = await supabase
       .from("brands").select("id").eq("user_id", user.id).maybeSingle();
+
+    const payload: Record<string, unknown> = {
+      user_id: user.id,
+      name: brandName.trim(),
+      dialect: dialect + " " + (DIALECTS.find((d) => d.value === dialect)?.emoji || ""),
+      platforms,
+      product_category: productCategory,
+    };
+
     if (existing?.id) {
       await supabase.from("brands").update(payload).eq("id", existing.id);
     } else {
       await supabase.from("brands").insert(payload);
     }
+
+    if (demoCaptions.length > 0 && user) {
+      await supabase.from("saved_content").insert({
+        user_id: user.id,
+        title: `أول محتوى: ${demoProduct || brandName}`,
+        content: demoCaptions[0],
+        content_type: "caption",
+        platform: platforms[0] || "instagram",
+        status: "draft",
+        dialect,
+        product_name: demoProduct || brandName,
+      });
+    }
+
+    await supabase.functions.invoke("send-email", {
+      body: {
+        type: "welcome",
+        email: user.email,
+        name: brandName.trim(),
+      },
+    }).catch(() => {});
+
     localStorage.setItem(ONBOARDING_KEY + "_" + user.id, "1");
     setSaving(false);
-    go(TOTAL_STEPS);
+    setConfetti(true);
+    go(TOTAL_STEPS - 1);
+  };
+
+  const handleCopy = async (text: string, idx: number) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
   };
 
   const close = () => {
     if (user) localStorage.setItem(ONBOARDING_KEY + "_" + user.id, "1");
     setOpen(false);
+    navigate("/dashboard");
   };
 
   if (checking || !open) return null;
 
+  const progressPct = Math.round((step / (TOTAL_STEPS - 1)) * 100);
+
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-lg p-0 overflow-hidden glass-card border-primary/30 [&>button]:hidden"
+        className="sm:max-w-lg p-0 overflow-hidden glass-card border-primary/30 [&>button]:hidden max-h-[90vh] flex flex-col"
         aria-describedby={undefined}
       >
-        {/* Top bar */}
-        <div className="px-6 pt-6 pb-4">
-          <div className="flex items-center justify-between mb-4">
+        <div className="px-6 pt-5 pb-3 shrink-0">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg btn-gold flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg btn-gold flex items-center justify-center">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <span className="font-black text-gradient-gold text-lg">Moda AI</span>
+              <span className="text-sm font-black text-foreground">Moda AI</span>
             </div>
-            {step < TOTAL_STEPS && (
-              <button
-                onClick={close}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                تخطي الإعداد
-              </button>
+            {step < TOTAL_STEPS - 1 && (
+              <span className="text-xs text-muted-foreground">
+                خطوة {step + 1} من {TOTAL_STEPS}
+              </span>
             )}
           </div>
 
-          {/* Progress bar */}
-          {step < TOTAL_STEPS && (
-            <div className="flex gap-1.5 mb-1">
-              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1 flex-1 rounded-full transition-all duration-500 ${
-                    i <= step ? "bg-primary" : "bg-surface-2"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-          {step < TOTAL_STEPS && (
-            <p className="text-[11px] text-muted-foreground">
-              خطوة {step + 1} من {TOTAL_STEPS}
-            </p>
-          )}
+          <div className="w-full bg-border/40 rounded-full h-1.5">
+            <motion.div
+              className="h-1.5 rounded-full bg-gradient-to-r from-primary to-yellow-400"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.4 }}
+            />
+          </div>
         </div>
 
-        {/* Steps */}
-        <div className="overflow-hidden min-h-[300px]">
+        <div className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div
               key={step}
@@ -162,174 +260,278 @@ export function WelcomeModal() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.28, ease: "easeInOut" }}
-              className="px-6"
+              transition={{ duration: 0.3 }}
+              className="px-6 pb-4"
             >
-              {/* Step 0 — Welcome */}
+              {/* Step 0: Welcome */}
               {step === 0 && (
-                <div className="text-right">
-                  <div className="text-5xl mb-4">👋</div>
-                  <h2 className="text-2xl font-black text-foreground mb-2">
-                    أهلاً بك في Moda AI!
+                <div className="text-center py-6">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", delay: 0.1 }}
+                    className="text-5xl mb-4"
+                  >
+                    👋
+                  </motion.div>
+                  <h2 className="text-2xl font-black text-foreground mb-3">
+                    أهلاً بيك في Moda AI!
                   </h2>
-                  <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                    في دقيقتين هنضبط البراند بتاعك عشان الـ AI يكتب ويصمم بأسلوبك أنت — مش أسلوب جاهز.
+                  {user?.user_metadata?.full_name && (
+                    <p className="text-primary font-bold text-lg mb-2">
+                      {user.user_metadata.full_name}
+                    </p>
+                  )}
+                  <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto mb-6">
+                    إعداد براندك هياخد أقل من دقيقتين وبعده هتبدأ توليد محتوى فاشون احترافي بالذكاء الاصطناعي
                   </p>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3 mb-6">
                     {[
-                      { icon: Store, text: "اسم البراند وهويته" },
-                      { icon: Pen, text: "اللهجة والأسلوب المناسبين" },
-                      { icon: Target, text: "الفئة اللي بتستهدفها" },
-                    ].map(({ icon: Icon, text }, i) => (
-                      <div key={i} className="flex items-center gap-3 text-sm text-foreground">
-                        <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
-                          <Icon className="w-4 h-4 text-primary" />
-                        </div>
-                        {text}
+                      { emoji: "✍️", label: "كابشنات" },
+                      { emoji: "📸", label: "صور" },
+                      { emoji: "🎬", label: "ريلز" },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="glass-card gold-border rounded-xl p-3 text-center"
+                      >
+                        <div className="text-2xl mb-1">{item.emoji}</div>
+                        <div className="text-xs font-bold text-foreground">{item.label}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Step 1 — Brand Name */}
+              {/* Step 1: Brand Setup */}
               {step === 1 && (
-                <div className="text-right">
-                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center mb-4">
-                    <Store className="w-6 h-6 text-primary" />
+                <div className="py-4 space-y-5">
+                  <div className="text-center mb-2">
+                    <h2 className="text-xl font-black text-foreground mb-1">إعداد البراند</h2>
+                    <p className="text-xs text-muted-foreground">هذي المعلومات هتخلي الـ AI يكتب بأسلوب براندك</p>
                   </div>
-                  <h2 className="text-xl font-black text-foreground mb-1">اسم البراند</h2>
-                  <p className="text-muted-foreground text-sm mb-5">
-                    هيظهر في كل المحتوى اللي الـ AI هيولّده ليك
-                  </p>
-                  <input
-                    type="text"
-                    value={brandName}
-                    onChange={(e) => setBrandName(e.target.value)}
-                    placeholder="مثال: Zara Egypt, House of Nour..."
-                    autoFocus
-                    className="w-full bg-secondary border border-border/50 rounded-xl px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors text-right"
-                  />
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                      اسم البراند *
+                    </label>
+                    <input
+                      type="text"
+                      value={brandName}
+                      onChange={(e) => setBrandName(e.target.value)}
+                      placeholder="مثلاً: Hana Boutique"
+                      maxLength={60}
+                      className="w-full bg-background/50 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors text-right"
+                      dir="rtl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-2 block font-medium">
+                      اللهجة المفضلة
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {DIALECTS.map((d) => (
+                        <button
+                          key={d.value}
+                          onClick={() => setDialect(d.value)}
+                          className={`p-3 rounded-xl border text-sm font-bold transition-all ${
+                            dialect === d.value
+                              ? "border-primary/60 bg-primary/10 text-foreground"
+                              : "border-border/40 text-muted-foreground hover:border-primary/30"
+                          }`}
+                        >
+                          {d.emoji} {d.value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-2 block font-medium">
+                      نوع المنتجات
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRODUCT_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat.value}
+                          onClick={() => setProductCategory(cat.value)}
+                          className={`p-3 rounded-xl border text-sm font-bold transition-all flex items-center gap-2 ${
+                            productCategory === cat.value
+                              ? "border-primary/60 bg-primary/10 text-foreground"
+                              : "border-border/40 text-muted-foreground hover:border-primary/30"
+                          }`}
+                        >
+                          <span>{cat.emoji}</span>
+                          <span>{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Step 2 — Dialect + Tone */}
+              {/* Step 2: Platforms */}
               {step === 2 && (
-                <div className="text-right">
-                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center mb-4">
-                    <Pen className="w-6 h-6 text-primary" />
-                  </div>
-                  <h2 className="text-xl font-black text-foreground mb-1">اللهجة والأسلوب</h2>
-                  <p className="text-muted-foreground text-sm mb-4">اختار اللهجة والنبرة اللي تناسب براندك</p>
-
-                  <p className="text-xs font-bold text-muted-foreground mb-2">اللهجة</p>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    {dialects.map((d) => (
-                      <button
-                        key={d.value}
-                        onClick={() => setDialect(d.value)}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                          dialect === d.value
-                            ? "btn-gold border-transparent"
-                            : "bg-secondary border-border/50 text-foreground hover:border-primary/40"
-                        }`}
-                      >
-                        <span>{d.emoji}</span>
-                        {d.label}
-                      </button>
-                    ))}
+                <div className="py-4 space-y-5">
+                  <div className="text-center mb-2">
+                    <h2 className="text-xl font-black text-foreground mb-1">على أي منصات تنشر؟</h2>
+                    <p className="text-xs text-muted-foreground">اختار كل المنصات اللي بتستخدمها</p>
                   </div>
 
-                  <p className="text-xs font-bold text-muted-foreground mb-2">أسلوب المحتوى</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {tones.map((t) => (
-                      <button
-                        key={t.value}
-                        onClick={() => setTone(t.value)}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                          tone === t.value
-                            ? "btn-gold border-transparent"
-                            : "bg-secondary border-border/50 text-foreground hover:border-primary/40"
-                        }`}
-                      >
-                        <span>{t.emoji}</span>
-                        {t.label}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 gap-3">
+                    {PLATFORMS.map((p) => {
+                      const selected = platforms.includes(p.value);
+                      return (
+                        <button
+                          key={p.value}
+                          onClick={() => togglePlatform(p.value)}
+                          className={`p-4 rounded-xl border text-sm font-bold transition-all flex items-center gap-3 relative ${
+                            selected
+                              ? "border-primary/60 bg-primary/10 text-foreground"
+                              : "border-border/40 text-muted-foreground hover:border-primary/30"
+                          }`}
+                        >
+                          <span className="text-lg">{p.emoji}</span>
+                          <span>{p.label}</span>
+                          {selected && (
+                            <Check className="w-4 h-4 text-primary absolute top-2 left-2" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {platforms.length === 0 && (
+                    <p className="text-xs text-amber-400 text-center">اختار منصة واحدة على الأقل</p>
+                  )}
                 </div>
               )}
 
-              {/* Step 3 — Audience */}
+              {/* Step 3: Wow Moment */}
               {step === 3 && (
-                <div className="text-right">
-                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center mb-4">
-                    <Target className="w-6 h-6 text-primary" />
+                <div className="py-4 space-y-4">
+                  <div className="text-center mb-2">
+                    <h2 className="text-xl font-black text-foreground mb-1">
+                      🎯 وقت السحر!
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      صف منتجاً تريد كتابة محتوى عنه — الـ AI سيكتب له 3 كابشنات الآن
+                    </p>
                   </div>
-                  <h2 className="text-xl font-black text-foreground mb-1">الفئة المستهدفة</h2>
-                  <p className="text-muted-foreground text-sm mb-5">مين اللي بيشتري منك؟</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {audiences.map((a) => (
-                      <button
-                        key={a.value}
-                        onClick={() => setAudience(a.value)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold border transition-all ${
-                          audience === a.value
-                            ? "btn-gold border-transparent"
-                            : "bg-secondary border-border/50 text-foreground hover:border-primary/40"
-                        }`}
-                      >
-                        <span className="text-xl">{a.emoji}</span>
-                        {a.label}
-                      </button>
-                    ))}
+
+                  <div>
+                    <input
+                      type="text"
+                      value={demoProduct}
+                      onChange={(e) => setDemoProduct(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !demoLoading && generateDemo()}
+                      placeholder={`مثلاً: فستان أسود بتفصيل الكتف`}
+                      maxLength={100}
+                      className="w-full bg-background/50 border border-border/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors text-right"
+                      dir="rtl"
+                    />
                   </div>
+
+                  <button
+                    onClick={generateDemo}
+                    disabled={demoLoading || !demoProduct.trim()}
+                    className="w-full btn-gold py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {demoLoading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> الـ AI بيكتب...</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4" /> ولّد الآن</>
+                    )}
+                  </button>
+
+                  {demoError && (
+                    <p className="text-xs text-red-400 text-center">{demoError}</p>
+                  )}
+
+                  {demoCaptions.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-3"
+                    >
+                      <p className="text-xs text-primary font-bold text-center">
+                        🎉 هذا ما يستطيع Moda AI فعله لك!
+                      </p>
+                      {demoCaptions.slice(0, 2).map((caption, i) => (
+                        <div
+                          key={i}
+                          className="glass-card gold-border rounded-xl p-3 relative group"
+                        >
+                          <button
+                            onClick={() => handleCopy(caption, i)}
+                            className="absolute top-2 left-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            {copiedIdx === i ? (
+                              <Check className="w-3.5 h-3.5 text-primary" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                          </button>
+                          <p className="text-xs text-foreground leading-relaxed whitespace-pre-line pr-2">
+                            {caption}
+                          </p>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
                 </div>
               )}
 
-              {/* Step 4 — Done */}
-              {step === TOTAL_STEPS && (
-                <div className="text-center py-4">
-                  <div className="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-10 h-10 text-primary" />
-                  </div>
-                  <h2 className="text-2xl font-black text-foreground mb-2">
-                    البراند جاهز! 🎉
+              {/* Step 4: Completion */}
+              {step === 4 && (
+                <div className="text-center py-6 relative">
+                  {confetti && <Confetti />}
+                  <motion.div
+                    initial={{ scale: 0, rotate: -20 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", delay: 0.1 }}
+                    className="text-5xl mb-4"
+                  >
+                    🎉
+                  </motion.div>
+                  <h2 className="text-2xl font-black text-foreground mb-3">
+                    براندك جاهز!
                   </h2>
-                  <p className="text-muted-foreground text-sm mb-6">
-                    <span className="text-primary font-bold">{brandName}</span> — الـ AI دلوقتي عارف يتكلم بأسلوبك
-                  </p>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => { close(); navigate("/dashboard/ad-generator"); }}
-                      className="w-full btn-gold py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      ولّد أول إعلان دلوقتي
-                    </button>
-                    <button
-                      onClick={() => { close(); navigate("/dashboard/writer"); }}
-                      className="w-full bg-secondary border border-border/50 py-3.5 rounded-xl text-sm font-bold text-foreground hover:border-primary/40 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Pen className="w-4 h-4" />
-                      اكتب محتوى سوشيال
-                    </button>
-                    <button
-                      onClick={close}
-                      className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
-                    >
-                      اروح الداشبورد
-                    </button>
+                  <div className="space-y-2 mb-6">
+                    {[
+                      { emoji: "✅", label: `البراند "${brandName}" محفوظ` },
+                      { emoji: "✅", label: "أول محتوى مُولَّد وحُفظ" },
+                      { emoji: "🚀", label: "جاهز للإنتاج الفعلي!" },
+                    ].map((item) => (
+                      <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="flex items-center justify-center gap-2 text-sm text-foreground"
+                      >
+                        <span>{item.emoji}</span>
+                        <span>{item.label}</span>
+                      </motion.div>
+                    ))}
                   </div>
+                  <p className="text-xs text-muted-foreground mb-6">
+                    ستجد محتواك الأول في مكتبة المحتوى، ويمكنك توليد المزيد من الداشبورد
+                  </p>
+                  <button
+                    onClick={close}
+                    className="btn-gold px-8 py-3 rounded-xl font-bold text-sm"
+                  >
+                    انطلق للداشبورد ←
+                  </button>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Footer buttons */}
-        {step < TOTAL_STEPS && (
-          <div className="flex gap-3 px-6 py-5 border-t border-border/30">
+        {step < TOTAL_STEPS - 1 && (
+          <div className="flex gap-3 px-6 py-4 border-t border-border/30 shrink-0">
             {step > 0 && (
               <button
                 onClick={() => go(step - 1)}
@@ -340,16 +542,36 @@ export function WelcomeModal() {
               </button>
             )}
             <div className="flex-1" />
-            {step < TOTAL_STEPS - 1 ? (
+            {step === 0 && (
               <button
-                onClick={() => go(step + 1)}
-                disabled={step === 1 && !brandName.trim()}
+                onClick={() => go(1)}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl btn-gold text-sm font-bold"
+              >
+                هيا بنا!
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            {step === 1 && (
+              <button
+                onClick={() => go(2)}
+                disabled={!brandName.trim()}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 التالي
                 <ArrowLeft className="w-4 h-4" />
               </button>
-            ) : (
+            )}
+            {step === 2 && (
+              <button
+                onClick={() => go(3)}
+                disabled={platforms.length === 0}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl btn-gold text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                جرّب الـ AI الآن
+                <Sparkles className="w-4 h-4" />
+              </button>
+            )}
+            {step === 3 && (
               <button
                 onClick={finish}
                 disabled={saving || !brandName.trim()}
@@ -358,7 +580,7 @@ export function WelcomeModal() {
                 {saving ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> جاري الحفظ...</>
                 ) : (
-                  <><Check className="w-4 h-4" /> ابدأ الآن</>
+                  <><Check className="w-4 h-4" /> اكمل الإعداد</>
                 )}
               </button>
             )}
