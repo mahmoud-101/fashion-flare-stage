@@ -48,11 +48,6 @@ const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const HashtagGenerator = React.lazy(() => import("./pages/HashtagGenerator"));
 const PricingPage = React.lazy(() => import("./pages/PricingPage"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
-const ComingSoonPage = React.lazy(() => import("./pages/ComingSoonPage"));
-const FaceSwapPage = React.lazy(() => import("./pages/FaceSwapPage"));
-const ReelsMaker = React.lazy(() => import("./pages/ReelsMaker"));
-const VirtualTryOnPage = React.lazy(() => import("./pages/VirtualTryOnPage"));
-const SketchToImagePage = React.lazy(() => import("./pages/SketchToImagePage"));
 
 const queryClient = new QueryClient();
 
@@ -92,7 +87,6 @@ const App = () => (
               <Route path="/dashboard/creator" element={<AIPage><CreatorStudio /></AIPage>} />
               <Route path="/dashboard/photoshoot" element={<AIPage><PhotoshootPage /></AIPage>} />
               <Route path="/dashboard/edit-studio" element={<AIPage><EditStudioPage /></AIPage>} />
-              <Route path="/dashboard/reels" element={<AIPage><ReelsMaker /></AIPage>} />
               <Route path="/dashboard/scheduler" element={<ProtectedRoute><Scheduler /></ProtectedRoute>} />
               <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
               <Route path="/dashboard/store" element={<ProtectedRoute><StoreConnect /></ProtectedRoute>} />
@@ -105,10 +99,7 @@ const App = () => (
               <Route path="/dashboard/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
               <Route path="/dashboard/templates" element={<ProtectedRoute><TemplatesPage /></ProtectedRoute>} />
               <Route path="/dashboard/help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} />
-              <Route path="/dashboard/face-swap" element={<AIPage><FaceSwapPage /></AIPage>} />
-              <Route path="/dashboard/virtual-tryon" element={<AIPage><VirtualTryOnPage /></AIPage>} />
               <Route path="/dashboard/upscaler" element={<AIPage><ImageUpscalerPage /></AIPage>} />
-              <Route path="/dashboard/sketch-to-image" element={<AIPage><SketchToImagePage /></AIPage>} />
               <Route path="/dashboard/hashtags" element={<AIPage><HashtagGenerator /></AIPage>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

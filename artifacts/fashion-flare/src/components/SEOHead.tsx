@@ -13,7 +13,7 @@ const DEFAULT_DESCRIPTION =
   "Moda AI — ولّد محتوى فاشون احترافي بالعربي في ثواني. كابشنات، صور منتجات، إعلانات، وريلز. متخصص 100% في البراندات المصرية والعربية.";
 const DEFAULT_OG_IMAGE = "/opengraph.jpg";
 const SITE_NAME = "Moda AI";
-const SITE_URL = "https://fashion-flare.lovable.app";
+const SITE_URL = import.meta.env.VITE_SITE_URL ?? "https://moda-ai.com";
 
 const SOFTWARE_APP_LD = {
   "@context": "https://schema.org",
