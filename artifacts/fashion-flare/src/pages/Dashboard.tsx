@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown, Flame, Sparkles, CheckCircle2, Circle } from "lucide-react";
+import { Pen, Image, Calendar, BarChart3, ShoppingBag, TrendingUp, FileText, Zap, ArrowLeft, Clock, Wand2, Eye, FlaskConical, AlertCircle, Crown, Flame, Sparkles, CheckCircle2, Circle } from "lucide-react";
 import { WelcomeModal } from "@/components/WelcomeModal";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -30,7 +30,6 @@ const quickTools = [
   { title: "تجسس المنافسين", desc: "حلل إعلانات منافسيك", icon: Eye, url: "/dashboard/competitor-spy", badge: "جديد" },
   { title: "A/B اختبار", desc: "قارن نسخ الإعلانات", icon: FlaskConical, url: "/dashboard/ab-testing", badge: null },
   { title: "است��ديو الصور", desc: "حذف خلفية + موديلات", icon: Image, url: "/dashboard/studio", badge: null },
-  { title: "صانع الريلز", desc: "سكريبتات ريلز احترافية", icon: Video, url: "/dashboard/reels", badge: null },
   { title: "المخطط", desc: "جدولة كل منصاتك", icon: Calendar, url: "/dashboard/scheduler", badge: null },
   { title: "ربط المتجر", desc: "Shopify / Salla / Zid", icon: ShoppingBag, url: "/dashboard/store", badge: null },
 ];

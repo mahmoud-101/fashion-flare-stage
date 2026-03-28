@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, Copy, Check, Sparkles, Heart, Eye, X, Video, Pen } from "lucide-react";
+import { Search, Copy, Check, Sparkles, Heart, Eye, X, Pen } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -590,10 +590,6 @@ export function TemplatesLibrary({ onSelect }: TemplatesLibraryProps) {
     setPreviewTemplate(null);
   };
 
-  const handleUseInReels = (template: Template) => {
-    navigate("/dashboard/reels", { state: { prefill: template.content } });
-    setPreviewTemplate(null);
-  };
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -818,15 +814,6 @@ export function TemplatesLibrary({ onSelect }: TemplatesLibraryProps) {
                 <Pen className="w-3.5 h-3.5" />
                 استخدم في الكاتب
               </button>
-              {previewTemplate.type === "reel_script" && (
-                <button
-                  onClick={() => handleUseInReels(previewTemplate)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-green-400/15 text-green-400 border border-green-400/20 hover:bg-green-400/25 transition-all"
-                >
-                  <Video className="w-3.5 h-3.5" />
-                  استخدم في الريلز
-                </button>
-              )}
               <button
                 onClick={() => toggleFavorite(previewTemplate.id)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
