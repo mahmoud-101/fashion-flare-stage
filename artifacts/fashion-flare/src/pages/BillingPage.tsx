@@ -192,7 +192,7 @@ export default function BillingPage() {
         fullName: billingName,
         phone: billingPhone,
         email: user.email,
-      });
+      }, { includeBrand: false });
 
       if (result.mode === "paymob" && result.iframeUrl) {
         window.open(result.iframeUrl, "_blank");

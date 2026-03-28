@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BarChart3, Loader2, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 
 interface AdScore {
   hook: number;
@@ -29,11 +29,11 @@ const AdScoreCard = ({ content, imageUrl, contentType }: AdScoreCardProps) => {
     if (!content && !imageUrl) return toast.error("لا يوجد محتوى للتقييم");
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("score-ad", {
-        body: { content, imageUrl, contentType },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      const data = await callEdgeFunction<AdScore>("score-ad", {
+        content,
+        imageUrl,
+        contentType,
+      }, { includeBrand: false });
       setScore(data);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "فشل التقييم");

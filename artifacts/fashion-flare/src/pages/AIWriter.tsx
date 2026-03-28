@@ -185,7 +185,7 @@ const AIWriter = () => {
           productImage: productImages[0] || null,
           scenarios: [ideas[idx].scenario],
           mood: "Minimal White",
-        });
+        }, { includeBrand: false });
 
         const imageResult = (data as Record<string, unknown[]>)?.results?.[0] as Record<string, unknown> | undefined;
         if (!imageResult?.image) throw new Error("فشل توليد الصورة");

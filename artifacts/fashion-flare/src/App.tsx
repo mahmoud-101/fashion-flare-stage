@@ -48,6 +48,7 @@ const AboutPage = React.lazy(() => import("./pages/AboutPage"));
 const HashtagGenerator = React.lazy(() => import("./pages/HashtagGenerator"));
 const PricingPage = React.lazy(() => import("./pages/PricingPage"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
+const CheckEmailPage = React.lazy(() => import("./pages/CheckEmailPage"));
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
               <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/check-email" element={<CheckEmailPage />} />
               <Route path="/login" element={<Navigate to="/auth" replace />} />
               <Route path="/register" element={<Navigate to="/auth" replace />} />
               <Route path="/terms" element={<TermsPage />} />

@@ -1,97 +1,72 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { handleCors, errorResponse, successResponse, getUserFromJWT } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { getUserPlan, logUsage } from "../_shared/subscription.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-  try {
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "مفتاح OpenAI غير مضبوط" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const user = await getUserFromJWT(req, SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!user) return errorResponse("Unauthorized", 401);
 
-    const { images, action } = await req.json() as {
-      images?: Array<{ base64: string; mimeType: string; name?: string }>;
-      action?: string;
-    };
+  const plan = await getUserPlan(user.id, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, user.email);
+  const rateResult = await checkRateLimit(user.id, "text", plan, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  if (!rateResult.allowed) return rateLimitResponse(rateResult);
 
-    if (!images?.length || !images[0]?.base64) {
-      return new Response(JSON.stringify({ error: "يرجى رفع صورة لتحليل الستايل" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const body = await req.json();
+  const { image_url, brand_context } = body;
 
-    const isStyleAnalysis = action === "style";
+  if (!image_url) return errorResponse("image_url is required", 400);
 
-    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-      {
-        type: "text",
-        text: isStyleAnalysis
-          ? `Analyze this fashion image and provide a detailed style description for use in generating similar fashion product images.
+  const systemPrompt =
+    "أنت خبير في تحليل أسلوب التصميم والهوية البصرية. قدم تحليلاً دقيقاً باللغة العربية.";
 
-Describe:
-1. Visual style and aesthetic (e.g., minimalist, luxury, editorial, lifestyle)
-2. Lighting style (e.g., soft studio, natural, dramatic)
-3. Color palette and mood
-4. Composition and camera angle
-5. Background and setting
-
-Format your response as a single paragraph in English that can be used directly as a DALL-E image generation style prompt (max 150 words). Start with the main style keyword.`
-          : `Describe the key visual elements of this fashion image in 2-3 sentences for use in content generation.`,
-      }
-    ];
-
-    for (let i = 0; i < Math.min(images.length, 3); i++) {
-      const img = images[i];
-      userContent.push({
-        type: "image_url",
-        image_url: {
-          url: `data:${img.mimeType};base64,${img.base64}`,
-          detail: "low",
+  const messages = [
+    { role: "system", content: systemPrompt },
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: `حلل أسلوب هذه الصورة${brand_context ? ` في سياق العلامة التجارية: ${brand_context}` : ""}. اذكر: الألوان، الخطوط، الأسلوب البصري، التوصيات.`,
         },
-      });
-    }
+        { type: "image_url", image_url: { url: image_url } },
+      ],
+    },
+  ];
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional fashion photographer and art director. Provide concise, technical descriptions suitable for AI image generation.",
-          },
-          { role: "user", content: userContent },
-        ],
-        max_tokens: 250,
-        temperature: 0.4,
-      }),
-    });
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages,
+      max_tokens: 1500,
+    }),
+  });
 
-    if (!response.ok) throw new Error("فشل تحليل الصورة");
-
-    const result = await response.json() as { choices: Array<{ message: { content: string } }> };
-    const description = result.choices?.[0]?.message?.content;
-    if (!description) throw new Error("لم تصل بيانات");
-
-    return new Response(JSON.stringify({ description }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "خطأ غير متوقع";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text();
+    console.error("OpenAI error", err);
+    return errorResponse("Style analysis failed", 502);
   }
+
+  const data = await openaiRes.json();
+  const tokens = data.usage?.total_tokens ?? 0;
+
+  await logUsage(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    user_id: user.id,
+    action: "analyze-style",
+    tokens,
+  });
+
+  return successResponse({ analysis: data.choices?.[0]?.message?.content, usage: data.usage });
 });

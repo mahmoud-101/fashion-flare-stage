@@ -1,119 +1,70 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { handleCors, errorResponse, successResponse, getUserFromJWT } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { getUserPlan, logUsage } from "../_shared/subscription.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-
-interface ProductImage {
-  base64: string;
-  mimeType: string;
-}
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-  try {
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "مفتاح OpenAI غير مضبوط — تواصل مع الدعم" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const user = await getUserFromJWT(req, SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!user) return errorResponse("Unauthorized", 401);
 
-    const { prompt, targetMarket, dialect, productImage } = await req.json() as {
-      prompt: string;
-      targetMarket?: string;
-      dialect?: string;
-      productImage?: ProductImage | null;
-    };
+  const plan = await getUserPlan(user.id, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, user.email);
+  const rateResult = await checkRateLimit(user.id, "text", plan, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  if (!rateResult.allowed) return rateLimitResponse(rateResult);
 
-    if (!prompt?.trim()) {
-      return new Response(JSON.stringify({ error: "يرجى كتابة وصف المنتج" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const body = await req.json();
+  const { product, target_audience, budget, goals, duration } = body;
 
-    const dialectNote = dialect ? `اكتب باللهجة ${dialect}.` : "";
-    const marketNote = targetMarket ? `الجمهور المستهدف: ${targetMarket}.` : "";
+  if (!product) return errorResponse("product is required", 400);
 
-    const systemPrompt = `أنت خبير تسويق رقمي متخصص في الموضة العربية والفاشون. مهمتك توليد خطة محتوى تسويقي احترافي لمنتجات الأزياء.
-${dialectNote} ${marketNote}
-أعد JSON فقط بدون أي نص إضافي.`;
+  const systemPrompt =
+    "أنت خبير تسويق رقمي. قم بإنشاء خطة حملة تسويقية شاملة وعملية باللغة العربية.";
+  const userPrompt = `
+    المنتج: ${product}
+    الجمهور المستهدف: ${target_audience ?? "غير محدد"}
+    الميزانية: ${budget ?? "غير محددة"}
+    الأهداف: ${goals ?? "غير محددة"}
+    المدة: ${duration ?? "غير محددة"}
+    
+    قم بإنشاء خطة حملة تسويقية تفصيلية تشمل: الاستراتيجية، القنوات، المحتوى، الجدول الزمني، مؤشرات الأداء.
+  `;
 
-    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-      {
-        type: "text",
-        text: `بناءً على هذا الوصف للمنتج:
-"${prompt.slice(0, 1500)}"
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 2000,
+    }),
+  });
 
-ولّد خطة محتوى تتضمن 4 أفكار مختلفة. أعد JSON بهذا الشكل بالضبط:
-{
-  "ideas": [
-    {
-      "id": "idea-1",
-      "tov": "نبرة المحتوى (مثال: عاطفي، ترفيهي، مباشر، ملهم)",
-      "caption": "الكابشن الكامل بالعربية مع إيموجي وهاشتاجات (3-5 جمل)",
-      "scenario": "وصف المشهد البصري المقترح للصورة أو الفيديو بالإنجليزية (للاستخدام في توليد الصورة)",
-      "schedule": "توقيت النشر المقترح (مثال: الجمعة 7 مساءً)"
-    }
-  ]
-}
-
-تنوّع في النبرات: عاطفي، ترفيهي، تعليمي، مباشر للبيع.`,
-      }
-    ];
-
-    if (productImage?.base64) {
-      userContent.push({
-        type: "image_url",
-        image_url: { url: `data:${productImage.mimeType};base64,${productImage.base64}` },
-      });
-      userContent[0].text = userContent[0].text!.replace(
-        'بناءً على هذا الوصف للمنتج:',
-        'بناءً على صورة وهذا الوصف للمنتج:'
-      );
-    }
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: productImage?.base64 ? "gpt-4o" : "gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: productImage?.base64 ? userContent : userContent[0].text },
-        ],
-        max_tokens: 2000,
-        temperature: 0.8,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("OpenAI error:", err);
-      throw new Error("خطأ من خادم AI");
-    }
-
-    const result = await response.json() as { choices: Array<{ message: { content: string } }> };
-    const content = result.choices?.[0]?.message?.content;
-    if (!content) throw new Error("لم تصل بيانات من AI");
-
-    const parsed = JSON.parse(content);
-    if (!parsed.ideas || !Array.isArray(parsed.ideas)) throw new Error("تنسيق غير صحيح");
-
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "خطأ غير متوقع";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text();
+    console.error("OpenAI error", err);
+    return errorResponse("Campaign plan generation failed", 502);
   }
+
+  const data = await openaiRes.json();
+  const tokens = data.usage?.total_tokens ?? 0;
+
+  await logUsage(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    user_id: user.id,
+    action: "generate-campaign-plan",
+    tokens,
+  });
+
+  return successResponse({ plan: data.choices?.[0]?.message?.content, usage: data.usage });
 });

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Grid3X3, Download, Loader2, CheckSquare, Square } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import JSZip from "jszip";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 
 const BACKGROUNDS = [
   { id: "white", label: "أبيض ناعم", mood: "Clean minimalist pure white studio background, soft lighting" },
@@ -48,16 +48,12 @@ const BatchVariations = ({ productImages }: BatchVariationsProps) => {
 
     const promises = BACKGROUNDS.map(async (bg, idx) => {
       try {
-        const { data, error } = await supabase.functions.invoke("generate-campaign-images", {
-          body: {
-            productImages: images,
-            scenario: `Product hero shot on ${bg.mood}`,
-            mood: bg.mood,
-            customPrompt: "Professional e-commerce product photography, 8K quality",
-          },
-        });
-        if (error) throw new Error(error.message);
-        if (data?.error) throw new Error(data.error);
+        const data = await callEdgeFunction<{ imageUrl?: string; resultImage?: string }>("generate-campaign-images", {
+          productImages: images,
+          scenario: `Product hero shot on ${bg.mood}`,
+          mood: bg.mood,
+          customPrompt: "Professional e-commerce product photography, 8K quality",
+        }, { includeBrand: false });
         const img = data?.imageUrl || data?.resultImage || null;
         setResults(prev => {
           const next = [...prev];

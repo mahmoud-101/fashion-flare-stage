@@ -112,7 +112,7 @@ const CreatorStudio = () => {
     const analyze = async () => {
       setIsAnalyzingStyle(true);
       try {
-        const data = await callEdgeFunction("analyze-style", { images: styleImages, action: "style" });
+        const data = await callEdgeFunction("analyze-style", { images: styleImages, action: "style" }, { includeBrand: false });
         setStyleDescription((data as Record<string, unknown>).description as string || null);
       } catch (err: unknown) {
         toast.error("فشل تحليل صورة الستايل");
@@ -189,7 +189,7 @@ Key requirements:
       
       const data = await callEdgeFunction("generate-campaign-images", {
         productImages: allImages, scenario: prompt, mood: "", customPrompt: "",
-      });
+      }, { includeBrand: false });
       const d = data as Record<string, unknown>;
       const img = d?.imageUrl || d?.resultImage;
       if (img) {
@@ -226,7 +226,7 @@ Key requirements:
       const allImages = [{ base64: imageBase64, mimeType }];
       const editData = await callEdgeFunction("generate-campaign-images", {
         productImages: allImages, scenario: editPrompt, mood: "", customPrompt: "",
-      });
+      }, { includeBrand: false });
       const img = ((editData as Record<string, unknown>)?.imageUrl || (editData as Record<string, unknown>)?.resultImage) as string | null;
       if (img) {
         setGeneratedImage(img);

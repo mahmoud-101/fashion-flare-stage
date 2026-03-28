@@ -1,104 +1,84 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { handleCors, errorResponse, successResponse, getUserFromJWT } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { getUserPlan, logUsage } from "../_shared/subscription.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-  try {
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "مفتاح OpenAI غير مضبوط" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const user = await getUserFromJWT(req, SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!user) return errorResponse("Unauthorized", 401);
 
-    const { content, imageUrl, contentType } = await req.json() as {
-      content?: string;
-      imageUrl?: string;
-      contentType?: string;
-    };
+  const plan = await getUserPlan(user.id, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, user.email);
+  const rateResult = await checkRateLimit(user.id, "text", plan, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  if (!rateResult.allowed) return rateLimitResponse(rateResult);
 
-    if (!content && !imageUrl) {
-      return new Response(JSON.stringify({ error: "لا يوجد محتوى للتقييم" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const body = await req.json();
+  const { ad_text, platform, target_audience, image_url } = body;
 
-    const systemPrompt = `أنت محلل إعلانات رقمية خبير في سوق الموضة العربي.
-قيّم الإعلان بموضوعية وأعد JSON فقط.`;
+  if (!ad_text) return errorResponse("ad_text is required", 400);
 
-    const typeNote = contentType ? `نوع المحتوى: ${contentType}` : "";
+  const systemPrompt =
+    "أنت خبير في تقييم الإعلانات الرقمية. قيّم الإعلان وأعط نتيجة من 100 مع تفصيل النقاط باللغة العربية بصيغة JSON.";
+  const userContent = [
+    {
+      type: "text",
+      text: `
+        نص الإعلان: ${ad_text}
+        المنصة: ${platform ?? "عام"}
+        الجمهور المستهدف: ${target_audience ?? "غير محدد"}
+        
+        قيّم الإعلان وأعد JSON بهذا الشكل: { "score": 85, "breakdown": { "clarity": 90, "engagement": 80, "cta": 85, "relevance": 90 }, "strengths": [...], "improvements": [...] }
+      `,
+    },
+  ] as unknown[];
 
-    const userPrompt = `قيّم هذا الإعلان${typeNote ? ` (${typeNote})` : ""}:
-${content ? `\nالنص:\n"${content.slice(0, 800)}"` : ""}
-
-أعد JSON بهذا الشكل:
-{
-  "hook": 18,
-  "cta": 20,
-  "visual": 17,
-  "arabic": 22,
-  "suggestions": [
-    "اقتراح تحسين 1 بالعربية",
-    "اقتراح 2",
-    "اقتراح 3"
-  ]
-}
-
-معايير التقييم (كل واحدة من 25):
-- hook: قوة الجملة الأولى وجذب الانتباه
-- cta: وضوح الدعوة للتصرف ومدى إلحاحها
-- visual: جاذبية الوصف البصري والإيموجي
-- arabic: ملاءمة اللغة للجمهور العربي والصحة اللغوية
-
-suggestions: 3 اقتراحات تحسين قابلة للتطبيق فوراً`;
-
-    const messages: Array<{ role: string; content: unknown }> = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ];
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages,
-        max_tokens: 600,
-        temperature: 0.5,
-      }),
-    });
-
-    if (!response.ok) throw new Error("فشل التقييم");
-
-    const result = await response.json() as { choices: Array<{ message: { content: string } }> };
-    const resultContent = result.choices?.[0]?.message?.content;
-    if (!resultContent) throw new Error("لم تصل بيانات");
-
-    const scored = JSON.parse(resultContent);
-
-    return new Response(JSON.stringify({
-      hook: Math.min(25, Math.max(0, scored.hook || 15)),
-      cta: Math.min(25, Math.max(0, scored.cta || 15)),
-      visual: Math.min(25, Math.max(0, scored.visual || 15)),
-      arabic: Math.min(25, Math.max(0, scored.arabic || 15)),
-      suggestions: Array.isArray(scored.suggestions) ? scored.suggestions.slice(0, 5) : [],
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "خطأ غير متوقع";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (image_url) {
+    userContent.push({ type: "image_url", image_url: { url: image_url } });
   }
+
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      max_tokens: 1000,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text();
+    console.error("OpenAI error", err);
+    return errorResponse("Ad scoring failed", 502);
+  }
+
+  const data = await openaiRes.json();
+  const tokens = data.usage?.total_tokens ?? 0;
+  let scoreData: unknown;
+  try {
+    scoreData = JSON.parse(data.choices?.[0]?.message?.content ?? "{}");
+  } catch {
+    scoreData = { raw: data.choices?.[0]?.message?.content };
+  }
+
+  await logUsage(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    user_id: user.id,
+    action: "score-ad",
+    tokens,
+  });
+
+  return successResponse({ result: scoreData, usage: data.usage });
 });

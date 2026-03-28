@@ -1,134 +1,90 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { handleCors, errorResponse, successResponse, getUserFromJWT } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { getUserPlan, logUsage } from "../_shared/subscription.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const PRIVATE_IP_PATTERN =
+  /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|fd[0-9a-f]{2}:)/i;
 
-function dataUrlToBase64(dataUrl: string): { base64: string; mimeType: string } {
-  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (match) return { mimeType: match[1], base64: match[2] };
-  return { mimeType: "image/jpeg", base64: dataUrl };
+function isSafeImageUrl(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  if (PRIVATE_IP_PATTERN.test(parsed.hostname)) return false;
+  return true;
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-  try {
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "مفتاح OpenAI غير مضبوط" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const user = await getUserFromJWT(req, SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!user) return errorResponse("Unauthorized", 401);
 
-    const { image, scale } = await req.json() as {
-      image: string;
-      scale?: number;
-    };
+  const plan = await getUserPlan(user.id, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, user.email);
+  const rateResult = await checkRateLimit(user.id, "images", plan, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  if (!rateResult.allowed) return rateLimitResponse(rateResult);
 
-    if (!image) {
-      return new Response(JSON.stringify({ error: "يرجى رفع صورة" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const body = await req.json();
+  const {
+    image_url,
+    prompt = "Upscale and enhance this image to high resolution, preserving all details",
+  } = body;
 
-    const { base64, mimeType } = dataUrlToBase64(image);
-    const targetScale = Math.min(scale || 2, 4);
+  if (!image_url) return errorResponse("image_url is required", 400);
 
-    const visionResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `You are analyzing a fashion/product image to recreate it at ${targetScale}x higher resolution with enhanced detail.
-
-Describe this image with extreme precision for image regeneration:
-1. Subject: What is shown (product type, clothing item, model, etc.)
-2. Colors: Exact colors and patterns (be very specific)
-3. Materials & textures: Fabric type, surface finish, sheen, texture details
-4. Lighting: Light source direction, shadows, highlights, mood
-5. Composition: Framing, background, angle, perspective
-6. Specific details: Any logos, embellishments, stitching, design elements visible
-7. Image quality issues to fix: blurriness, noise, low contrast
-
-Provide a comprehensive regeneration prompt that will produce the same image but at ${targetScale}x higher quality with sharp details.`,
-            },
-            {
-              type: "image_url",
-              image_url: { url: `data:${mimeType};base64,${base64}`, detail: "high" },
-            },
-          ],
-        }],
-        max_tokens: 500,
-      }),
-    });
-
-    if (!visionResponse.ok) throw new Error("فشل تحليل الصورة");
-
-    const visionResult = await visionResponse.json() as {
-      choices: Array<{ message: { content: string } }>;
-    };
-    const imageDescription = visionResult.choices?.[0]?.message?.content || "";
-
-    const sizeMap: Record<number, "1024x1024" | "1024x1792" | "1792x1024"> = {
-      2: "1024x1024",
-      3: "1024x1792",
-      4: "1792x1024",
-    };
-    const dalleSize = sizeMap[targetScale] || "1024x1024";
-
-    const prompt = `Ultra high resolution, hyper-detailed, ${targetScale}x upscaled recreation: ${imageDescription}
-
-Maximum sharpness and clarity. Fine detail enhancement. Perfect focus throughout. Professional commercial photography quality. Photorealistic rendering with enhanced texture detail. No artifacts, no noise, crystal clear image quality. Preserve exact composition and colors from the original.`;
-
-    const dalleResponse = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt.slice(0, 950),
-        n: 1,
-        size: dalleSize,
-        quality: "hd",
-        response_format: "b64_json",
-      }),
-    });
-
-    if (!dalleResponse.ok) {
-      const errText = await dalleResponse.text();
-      console.error("DALL-E error:", errText);
-      throw new Error("فشل تحسين الصورة");
-    }
-
-    const dalleResult = await dalleResponse.json() as {
-      data: Array<{ b64_json: string }>;
-    };
-
-    const b64 = dalleResult.data?.[0]?.b64_json;
-    if (!b64) throw new Error("لم تصل الصورة");
-
-    return new Response(JSON.stringify({
-      resultImage: `data:image/png;base64,${b64}`,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "خطأ غير متوقع";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (!isSafeImageUrl(image_url)) {
+    return errorResponse(
+      "image_url must be a valid public HTTPS URL (private/internal addresses are not allowed)",
+      400
+    );
   }
+
+  let imageBlob: Blob;
+  try {
+    const imageRes = await fetch(image_url);
+    if (!imageRes.ok) return errorResponse("Failed to fetch image from provided URL", 400);
+    imageBlob = await imageRes.blob();
+  } catch {
+    return errorResponse("Invalid or unreachable image_url", 400);
+  }
+
+  const form = new FormData();
+  form.append("image", new File([imageBlob], "image.png", { type: "image/png" }));
+  form.append("prompt", prompt);
+  form.append("n", "1");
+  form.append("size", "1024x1024");
+  form.append("model", "dall-e-2");
+
+  const openaiRes = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: form,
+  });
+
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text();
+    console.error("OpenAI error", err);
+    return errorResponse("Image upscaling failed", 502);
+  }
+
+  const data = await openaiRes.json();
+
+  await logUsage(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    user_id: user.id,
+    action: "upscale-image",
+    image_cost: 1,
+  });
+
+  return successResponse(data);
 });

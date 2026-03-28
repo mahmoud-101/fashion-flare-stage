@@ -4,9 +4,9 @@ import {
   Upload, Wand2, Download, RefreshCw, X, Type, Sparkles,
   Edit3, Palette, Image as ImageIcon, Eraser, Layers, Sun,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { FASHION_AD_TEMPLATES } from "@/data/fashionAdTemplates";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 
 interface ImageFile {
   base64: string;
@@ -104,17 +104,12 @@ const EditStudioPage = () => {
         if (match) { mimeType = match[1]; imageBase64 = match[2]; }
       }
 
-      const { data, error: fnErr } = await supabase.functions.invoke("generate-campaign-images", {
-        body: {
-          productImages: [{ base64: imageBase64, mimeType }],
-          scenario: editPrompt,
-          mood: "",
-          customPrompt: "",
-        },
-      });
-
-      if (fnErr) throw new Error(fnErr.message);
-      if (data?.error) throw new Error(data.error);
+      const data = await callEdgeFunction<{ imageUrl?: string; resultImage?: string; description?: string }>("generate-campaign-images", {
+        productImages: [{ base64: imageBase64, mimeType }],
+        scenario: editPrompt,
+        mood: "",
+        customPrompt: "",
+      }, { includeBrand: false });
 
       const img = data?.imageUrl || data?.resultImage;
       if (img) {

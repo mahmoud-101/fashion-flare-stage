@@ -115,7 +115,7 @@ const PhotoshootPage = () => {
           scenario,
           mood: selectedTemplate?.mood || "",
           customPrompt: selectedTemplate?.styling || "",
-        });
+        }, { includeBrand: false });
 
         const img = ((data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null) as string | null;
         setResults(prev => {
@@ -167,7 +167,7 @@ const PhotoshootPage = () => {
 
       const data = await callEdgeFunction("generate-campaign-images", {
         productImages: images, scenario, mood: selectedTemplate?.mood || "", customPrompt: selectedTemplate?.styling || "",
-      });
+      }, { includeBrand: false });
 
       const img = ((data as Record<string, unknown>)?.imageUrl || (data as Record<string, unknown>)?.resultImage || null) as string | null;
       setResults(prev => {

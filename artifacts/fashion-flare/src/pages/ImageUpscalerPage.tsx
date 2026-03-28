@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, ZoomIn, Download, Loader2, Info } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 
 const ImageUpscalerPage = () => {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -38,19 +38,19 @@ const ImageUpscalerPage = () => {
     setLoading(true);
     setResultImage(null);
     try {
-      const { data, error } = await supabase.functions.invoke("upscale-image", {
-        body: { image: originalImage, scale: parseInt(scale) },
-      });
-      if (error) throw error;
+      const data = await callEdgeFunction<{ resultImage?: string }>("upscale-image", {
+        image: originalImage,
+        scale: parseInt(scale),
+      }, { includeBrand: false });
       if (data?.resultImage) {
         setResultImage(data.resultImage);
         toast.success(`تم تكبير الصورة ${scale}x بنجاح!`);
       } else {
         throw new Error("لم يتم إنشاء صورة");
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "حدث خطأ أثناء تكبير الصورة");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "حدث خطأ أثناء تكبير الصورة";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

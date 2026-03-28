@@ -1,9 +1,19 @@
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface CallOptions {
   retries?: number;
   retryDelay?: number;
   timeoutMs?: number;
+  includeBrand?: boolean;
+}
+
+export interface BrandContext {
+  name: string;
+  tone: string;
+  dialect: string;
+  audience: string;
+  industry: string;
 }
 
 const ARABIC_ERRORS: Record<string, string> = {
@@ -14,6 +24,41 @@ const ARABIC_ERRORS: Record<string, string> = {
   NETWORK: 'مشكلة في الاتصال بالإنترنت. تأكد من اتصالك وجرّب.',
   DEFAULT: 'حصل خطأ غير متوقع. جرّب تاني أو تواصل مع الدعم.',
 };
+
+let _brandCache: BrandContext | null | undefined = undefined;
+
+export async function getBrandContext(): Promise<BrandContext | null> {
+  if (_brandCache !== undefined) return _brandCache;
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { _brandCache = null; return null; }
+
+    const { data } = await supabase
+      .from('brands')
+      .select('name, tone, dialect, target_audience, industry')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!data) { _brandCache = null; return null; }
+
+    _brandCache = {
+      name: data.name || '',
+      tone: data.tone || '',
+      dialect: data.dialect || '',
+      audience: data.target_audience || '',
+      industry: data.industry || '',
+    };
+    return _brandCache;
+  } catch {
+    _brandCache = null;
+    return null;
+  }
+}
+
+export function clearBrandCache(): void {
+  _brandCache = undefined;
+}
 
 function classifyMessage(msg: string): { arabic: string; retryable: boolean } {
   if (msg.includes('timeout') || msg.includes('AbortError') || msg === 'TIMEOUT') {
@@ -39,15 +84,33 @@ export async function callEdgeFunction<T = Record<string, unknown>>(
   body: Record<string, unknown>,
   options: CallOptions = {}
 ): Promise<T> {
-  const { retries = 2, retryDelay = 2000, timeoutMs = 60000 } = options;
+  const { retries = 2, retryDelay = 2000, timeoutMs = 60000, includeBrand = true } = options;
+
+  let enrichedBody = { ...body };
+
+  if (includeBrand) {
+    const brand = await getBrandContext();
+    const isBrandMissing = !brand || (!brand.name && !brand.dialect);
+    if (isBrandMissing) {
+      toast.error('أكمل إعدادات البراند أولاً لتخصيص المحتوى — اذهب إلى صفحة إعدادات البراند', {
+        id: 'brand-missing',
+        duration: 6000,
+      });
+      throw new Error('يرجى إكمال إعدادات البراند أولاً قبل توليد المحتوى');
+    }
+    enrichedBody = { ...enrichedBody, brand };
+  }
 
   const attemptOnce = (): Promise<T> => {
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
     );
 
-    const callPromise = supabase.functions.invoke(functionName, { body }).then(({ data, error }) => {
-      if (error) throw new Error(error.message || 'edge function error');
+    const callPromise = supabase.functions.invoke(functionName, { body: enrichedBody }).then(({ data, error }) => {
+      if (error) {
+        const errMsg = (error as unknown as { context?: { error?: string } }).context?.error || error.message || 'edge function error';
+        throw new Error(errMsg);
+      }
       if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : 'خطأ من السيرفر');
       if (!data) throw new Error('لم تصل بيانات من السيرفر');
       return data as T;
@@ -88,6 +151,17 @@ export async function* callEdgeFunctionStream(
 ): AsyncGenerator<string> {
   const { timeoutMs = 60000 } = options;
 
+  const brand = await getBrandContext();
+  const isBrandMissing = !brand || (!brand.name && !brand.dialect);
+  if (isBrandMissing) {
+    toast.error('أكمل إعدادات البراند أولاً لتخصيص المحتوى — اذهب إلى صفحة إعدادات البراند', {
+      id: 'brand-missing',
+      duration: 6000,
+    });
+    throw new Error('يرجى إكمال إعدادات البراند أولاً قبل توليد المحتوى');
+  }
+  const enrichedBody = { ...body, brand };
+
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
@@ -107,7 +181,7 @@ export async function* callEdgeFunctionStream(
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ ...body, stream: true }),
+      body: JSON.stringify({ ...enrichedBody, stream: true }),
       signal: controller.signal,
     });
   } catch (err) {

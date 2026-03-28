@@ -1,113 +1,58 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { handleCors, errorResponse, successResponse, getUserFromJWT } from "../_shared/cors.ts";
+import { getRemainingQuota } from "../_shared/rate-limit.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
+
+  const user = await getUserFromJWT(req, SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!user) return errorResponse("Unauthorized", 401);
+
+  const now = new Date().toISOString();
+
+  const subRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/subscriptions?user_id=eq.${user.id}&status=eq.active&expires_at=gte.${now}&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    }
+  );
+
+  let sub = (await subRes.json())?.[0];
+
+  if (!sub && user.email) {
+    const byEmailRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/subscriptions?user_email=eq.${encodeURIComponent(user.email)}&status=eq.active&expires_at=gte.${now}&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      }
+    );
+    sub = (await byEmailRes.json())?.[0];
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const planTier = sub?.plan_tier ?? "free";
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const [imagesRemaining, textRemaining] = await Promise.all([
+    getRemainingQuota(user.id, "images", planTier, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY),
+    getRemainingQuota(user.id, "text", planTier, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY),
+  ]);
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user } } = await supabase.auth.getUser(token);
-
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get latest active subscription
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // Auto-expire subscriptions past their end date
-    if (subscription && subscription.expires_at) {
-      const expiresAt = new Date(subscription.expires_at);
-      if (expiresAt < new Date()) {
-        await supabase.from("subscriptions").update({ status: "expired" })
-          .eq("id", subscription.id);
-
-        // Notify user
-        await supabase.from("notifications").insert({
-          user_id: user.id,
-          type: "subscription_expired",
-          title: "⚠️ انتهى اشتراكك",
-          message: "اشتراكك الاحترافي انتهى. جدّده الآن للاستمرار في الإنتاج بلا حدود!",
-          action_url: "/dashboard/billing",
-          is_read: false,
-        });
-
-        return new Response(JSON.stringify({
-          plan: "free",
-          status: "expired",
-          subscription: null,
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-    }
-
-    // Check for upcoming expiry (3 days warning)
-    if (subscription?.expires_at) {
-      const expiresAt = new Date(subscription.expires_at);
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-
-      if (expiresAt <= threeDaysFromNow) {
-        // Check if warning already sent today
-        const today = new Date().toISOString().split("T")[0];
-        const { data: existingWarning } = await supabase
-          .from("notifications")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("type", "subscription_expiry_warning")
-          .gte("created_at", today)
-          .limit(1)
-          .maybeSingle();
-
-        if (!existingWarning) {
-          const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86400000);
-          await supabase.from("notifications").insert({
-            user_id: user.id,
-            type: "subscription_expiry_warning",
-            title: `⏰ اشتراكك ينتهي بعد ${daysLeft} ${daysLeft === 1 ? "يوم" : "أيام"}`,
-            message: "جدّد اشتراكك الآن لتبقى تنتج محتوى بلا حدود!",
-            action_url: "/dashboard/billing",
-            is_read: false,
-          });
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({
-      plan: subscription?.plan || "free",
-      status: subscription?.status || "free",
-      subscription,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-  } catch (err) {
-    console.error("check-subscription error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  return successResponse({
+    plan: planTier,
+    status: sub?.status ?? "inactive",
+    expires_at: sub?.expires_at ?? null,
+    quota: {
+      images: { remaining: imagesRemaining },
+      text: { remaining: textRemaining },
+    },
+  });
 });

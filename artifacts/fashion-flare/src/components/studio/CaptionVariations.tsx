@@ -3,6 +3,7 @@ import { Sparkles, Copy, Save, Loader2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { callEdgeFunction } from "@/lib/callEdgeFunction";
 
 interface Variation {
   style: string;
@@ -25,11 +26,10 @@ const CaptionVariations = ({ caption, dialect }: CaptionVariationsProps) => {
     if (!caption.trim()) return toast.error("لا يوجد كابشن للتحويل");
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("caption-variations", {
-        body: { caption, dialect },
+      const data = await callEdgeFunction<{ variations: Variation[] }>("caption-variations", {
+        caption,
+        dialect,
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
       setVariations(data.variations || []);
       toast.success("✨ تم توليد 5 نسخ!");
     } catch (err: unknown) {

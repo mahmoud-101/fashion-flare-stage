@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Save, Upload, Plus, X, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { clearBrandCache } from "@/lib/callEdgeFunction";
 
 const dialects = ["مصري 🇪🇬", "سعودي 🇸🇦", "إماراتي 🇦🇪", "فصحى"];
 const tones = ["أنيق ومميز", "شبابي ومرح", "فاخر وراقي", "كاجوال وعفوي", "احترافي وموثوق"];
@@ -86,6 +87,8 @@ const BrandSettings = () => {
     }
     setSaving(false);
     setSaved(true);
+    clearBrandCache();
+    toast.success("✅ تم حفظ البراند — سيُطبّق على المحتوى القادم");
     setTimeout(() => setSaved(false), 2500);
   };
 

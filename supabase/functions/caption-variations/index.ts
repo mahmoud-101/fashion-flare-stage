@@ -1,112 +1,76 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { handleCors, errorResponse, successResponse, getUserFromJWT } from "../_shared/cors.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { getUserPlan, logUsage } from "../_shared/subscription.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
-  try {
-    if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "مفتاح OpenAI غير مضبوط" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const user = await getUserFromJWT(req, SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!user) return errorResponse("Unauthorized", 401);
 
-    const { caption, dialect } = await req.json() as {
-      caption: string;
-      dialect?: string;
-    };
+  const plan = await getUserPlan(user.id, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, user.email);
+  const rateResult = await checkRateLimit(user.id, "text", plan, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  if (!rateResult.allowed) return rateLimitResponse(rateResult);
 
-    if (!caption?.trim()) {
-      return new Response(JSON.stringify({ error: "يرجى تقديم الكابشن الأصلي" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const body = await req.json();
+  const { base_caption, platform, count = 5, tone } = body;
 
-    const dialectNote = dialect ? `اكتب باللهجة ${dialect}` : "اكتب بالعربية المناسبة";
+  if (!base_caption) return errorResponse("base_caption is required", 400);
 
-    const systemPrompt = `أنت خبير كتابة محتوى سوشيال ميديا متخصص في الموضة العربية.
-${dialectNote}. أعد JSON فقط.`;
+  const systemPrompt =
+    "أنت خبير في كتابة تسميات توضيحية جذابة لوسائل التواصل الاجتماعي. اكتب تنويعات متعددة ومتنوعة باللغة العربية.";
+  const userPrompt = `
+    التسمية الأصلية: ${base_caption}
+    المنصة: ${platform ?? "عام"}
+    النبرة المطلوبة: ${tone ?? "متنوعة (رسمية، ودية، مرحة)"}
+    عدد التنويعات: ${count}
+    
+    اكتب ${count} تنويعات مختلفة. أعد JSON: { "variations": ["...", "...", ...] }
+  `;
 
-    const userPrompt = `الكابشن الأصلي:
-"${caption.slice(0, 600)}"
-
-ولّد 5 نسخ بأساليب مختلفة. أعد JSON:
-{
-  "variations": [
-    {
-      "style": "😍",
-      "label": "عاطفي",
-      "caption": "نسخة عاطفية وشخصية بالعربية مع إيموجي وهاشتاجات"
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
-    {
-      "style": "⚡",
-      "label": "إلحاح",
-      "caption": "نسخة تعتمد على الإلحاح والندرة والعروض المحدودة"
-    },
-    {
-      "style": "🌟",
-      "label": "قصة",
-      "caption": "نسخة بأسلوب السرد والقصة الشخصية"
-    },
-    {
-      "style": "💎",
-      "label": "فاخر",
-      "caption": "نسخة راقية تعكس الجودة والفخامة"
-    },
-    {
-      "style": "🔥",
-      "label": "ترند",
-      "caption": "نسخة بأسلوب ترندي وشبابي لـ TikTok وReels"
-    }
-  ]
-}
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 1500,
+      response_format: { type: "json_object" },
+    }),
+  });
 
-كل نسخة يجب أن:
-- تحافظ على الرسالة الأساسية للمنتج
-- تختلف في الأسلوب والنبرة بوضوح
-- تشمل إيموجي وهاشتاجات مناسبة
-- تكون جاهزة للنشر مباشرة`;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 1500,
-        temperature: 0.85,
-      }),
-    });
-
-    if (!response.ok) throw new Error("فشل توليد النسخ");
-
-    const result = await response.json() as { choices: Array<{ message: { content: string } }> };
-    const content = result.choices?.[0]?.message?.content;
-    if (!content) throw new Error("لم تصل بيانات");
-
-    const parsed = JSON.parse(content);
-    if (!parsed.variations || !Array.isArray(parsed.variations)) throw new Error("تنسيق غير صحيح");
-
-    return new Response(JSON.stringify({ variations: parsed.variations }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "خطأ غير متوقع";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text();
+    console.error("OpenAI error", err);
+    return errorResponse("Caption variations generation failed", 502);
   }
+
+  const data = await openaiRes.json();
+  const tokens = data.usage?.total_tokens ?? 0;
+  let variations: unknown;
+  try {
+    variations = JSON.parse(data.choices?.[0]?.message?.content ?? "{}");
+  } catch {
+    variations = { raw: data.choices?.[0]?.message?.content };
+  }
+
+  await logUsage(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    user_id: user.id,
+    action: "caption-variations",
+    tokens,
+  });
+
+  return successResponse({ result: variations, usage: data.usage });
 });

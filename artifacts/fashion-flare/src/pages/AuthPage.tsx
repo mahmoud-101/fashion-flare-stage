@@ -65,12 +65,22 @@ const AuthPage = () => {
       if (error) setError(error.message);
       else {
         localStorage.removeItem("moda_ref_code");
-        setSuccess("تم إرسال رابط التأكيد لإيميلك! ✉️");
+        navigate("/check-email", { state: { email } });
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setError("بيانات خاطئة، حاول تاني");
-      else navigate(redirectTo);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const msg = error.message?.toLowerCase() ?? "";
+        if (msg.includes("email not confirmed") || msg.includes("email_not_confirmed")) {
+          navigate("/check-email", { state: { email } });
+        } else {
+          setError("بيانات خاطئة، حاول تاني");
+        }
+      } else if (data.user && !data.user.email_confirmed_at) {
+        navigate("/check-email", { state: { email } });
+      } else {
+        navigate(redirectTo);
+      }
     }
     setLoading(false);
   };

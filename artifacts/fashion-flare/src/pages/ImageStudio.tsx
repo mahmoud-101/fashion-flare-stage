@@ -162,7 +162,7 @@ const ImageStudio = () => {
       try {
         const data = await callEdgeFunction("generate-campaign-images", {
           productImages: images, scenario: buildPrompt(scenario), mood: moodValue, customPrompt,
-        });
+        }, { includeBrand: false });
         const d = data as Record<string, unknown>;
         const img = d?.imageUrl || d?.resultImage || null;
 
@@ -210,7 +210,7 @@ const ImageStudio = () => {
       const images = productImages.map(p => ({ base64: p.base64, mimeType: p.mimeType }));
       const data = await callEdgeFunction("generate-campaign-images", {
         productImages: images, scenario: buildPrompt(scenario), mood: selectedMood, customPrompt,
-      });
+      }, { includeBrand: false });
       const d = data as Record<string, unknown>;
       const img = d?.imageUrl || d?.resultImage;
 
