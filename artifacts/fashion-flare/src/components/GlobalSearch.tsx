@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, Pen, Image, Video, Calendar, BarChart3, ShoppingBag, Settings, Sparkles, CreditCard, Library, Camera, Edit3, Wand2, Eye, FlaskConical, Gift, LayoutDashboard, HelpCircle, Store } from "lucide-react";
+import { Search, X, Pen, Image, Calendar, BarChart3, ShoppingBag, Settings, Sparkles, CreditCard, Library, Camera, Edit3, Wand2, Eye, FlaskConical, Gift, LayoutDashboard, HelpCircle, Store } from "lucide-react";
 
 interface SearchItem {
   title: string;
@@ -22,7 +22,6 @@ const searchItems: SearchItem[] = [
   { title: "استوديو التصوير", description: "تصوير منتجات AI", url: "/dashboard/photoshoot", icon: Camera, keywords: ["photo", "تصوير", "منتج"] },
   { title: "استوديو التعديل", description: "تعديل وريتاتش بالـ AI", url: "/dashboard/edit-studio", icon: Edit3, keywords: ["edit", "تعديل", "retouch"] },
   { title: "استوديو الصور", description: "حذف خلفية وتأثيرات", url: "/dashboard/studio", icon: Image, keywords: ["image", "صور", "خلفية"] },
-  { title: "صانع الريلز", description: "سكريبتات ريلز احترافية", url: "/dashboard/reels", icon: Video, keywords: ["reel", "ريلز", "فيديو"], comingSoon: true },
   { title: "المخطط والجدولة", description: "جدولة المنشورات", url: "/dashboard/scheduler", icon: Calendar, keywords: ["schedule", "جدولة", "مخطط"] },
   { title: "التحليلات", description: "إحصائيات الاستخدام", url: "/dashboard/analytics", icon: BarChart3, keywords: ["analytics", "تحليلات", "إحصائيات"] },
   { title: "ربط المتجر", description: "Shopify / Salla / Zid", url: "/dashboard/store", icon: ShoppingBag, keywords: ["store", "متجر", "salla", "shopify"] },

@@ -14,4 +14,4 @@ User-agent: *
 Allow: /
 Disallow: /dashboard/
 
-Sitemap: https://fashion-flare.lovable.app/sitemap.xml
+Sitemap: https://moda-ai.com/sitemap.xml

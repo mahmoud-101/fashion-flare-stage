@@ -3,72 +3,65 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 
   <url>
-    <loc>https://fashion-flare.lovable.app/</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="https://fashion-flare.lovable.app/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://moda-ai.com/"/>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/auth</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/auth</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/dashboard</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/dashboard</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/dashboard/writer</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/dashboard/writer</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/dashboard/reels</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/dashboard/studio</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/dashboard/studio</loc>
-    <lastmod>2025-03-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-
-  <url>
-    <loc>https://fashion-flare.lovable.app/dashboard/templates</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/dashboard/templates</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/dashboard/analytics</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/dashboard/analytics</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/dashboard/billing</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/dashboard/billing</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <url>
-    <loc>https://fashion-flare.lovable.app/help</loc>
-    <lastmod>2025-03-26</lastmod>
+    <loc>https://moda-ai.com/help</loc>
+    <lastmod>2025-03-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
