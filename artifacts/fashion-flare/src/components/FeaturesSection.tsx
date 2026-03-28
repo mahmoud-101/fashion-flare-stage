@@ -1,4 +1,4 @@
-import { Pen, Image, Video, Calendar, BarChart3, ShoppingBag, ArrowLeftRight, Shirt, ZoomIn, PenTool, Globe, Layers } from "lucide-react";
+import { Pen, Image, ZoomIn, Calendar, BarChart3, ShoppingBag, Globe, Layers } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 
@@ -16,34 +16,10 @@ const features = [
     badge: null,
   },
   {
-    icon: ArrowLeftRight,
-    title: "تبديل الوجوه Face Swap",
-    desc: "بدّل وجه الموديل في صور منتجاتك — اعرض نفس المنتج على موديلات مختلفة بضغطة زر",
-    badge: "جديد 🔥",
-  },
-  {
-    icon: Shirt,
-    title: "تجربة افتراضية Virtual Try-On",
-    desc: "عملاءك يشوفوا شكل الهدوم عليهم قبل ما يشتروا — زوّد مبيعاتك وقلّل المرتجعات",
-    badge: "جديد 🔥",
-  },
-  {
     icon: ZoomIn,
     title: "تكبير الصور AI Upscaler",
     desc: "كبّر صور منتجاتك لدقة 4K بالذكاء الاصطناعي — مثالي للطباعة والإعلانات الكبيرة",
     badge: "جديد",
-  },
-  {
-    icon: PenTool,
-    title: "سكتش لصورة Sketch to Image",
-    desc: "ارسم فكرة التصميم بشكل بسيط وحوّلها لصورة احترافية — مثالي لتصميم الملابس",
-    badge: "جديد",
-  },
-  {
-    icon: Video,
-    title: "صانع ريلز وتيك توك",
-    desc: "فيديوهات قصيرة احترافية من صور منتجاتك مع موسيقى ترندية وتيمبلاتس جاهزة",
-    badge: "قريباً",
   },
   {
     icon: Layers,
